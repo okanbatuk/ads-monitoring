@@ -17,7 +17,8 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   // Set theme on initial load
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') as Theme | null;
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    // Default to light theme if no saved preference
+    const systemPrefersDark = false; // Force light theme by default
     
     // Use saved theme, then system preference, default to light
     const initialTheme = savedTheme || (systemPrefersDark ? 'dark' : 'light');

@@ -119,7 +119,8 @@ const CampaignPage = () => {
   const campaignData = campaignResponse?.data as CampaignWithMetrics | undefined;
   const scoresData = (scoresResponse?.data?.scores || []) as CampaignScoreDto[];
   const adGroupCount = scoresResponse?.data?.total || 0;
-  const adGroupsData = (adGroupsResponse?.data || []) as AdGroupDto[];
+  const adGroupsData = (adGroupsResponse?.data?.adGroups || []) as AdGroupDto[];
+  const totalAdGroups = (adGroupsResponse?.data?.total || 0);
 
   // Calculate current quality score and trend from scores data
   const { currentScore, trend } = useMemo(() => {
@@ -439,6 +440,7 @@ const CampaignPage = () => {
               <h3 className="ad-groups-title">Ad Groups</h3>
             </div>
             <div className="ad-groups-list">
+              {/* TODO: add total ad groups count */}
               {adGroupsData.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {adGroupsData.map((adGroup) => (
