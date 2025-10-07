@@ -1,0 +1,233 @@
+/* Main container styles */
+.mcc-account-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Header styles */
+.account-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.account-title {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+  color: #1a1a1a;
+}
+
+.account-subtitle {
+  font-size: 14px;
+  color: #666;
+  margin-top: 4px;
+}
+
+/* Status badge styles */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.status-enabled {
+  background-color: #e6f7e6;
+  color: #1a7f37;
+}
+
+.status-paused {
+  background-color: #fff8e6;
+  color: #9a6700;
+}
+
+.status-removed {
+  background-color: #ffebe9;
+  color: #cf222e;
+}
+
+.status-unknown {
+  background-color: #f6f8fa;
+  color: #57606a;
+}
+
+/* Button styles */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  gap: 6px;
+}
+
+.button-primary {
+  background-color: #0969da;
+  color: white;
+  border-color: #0969da;
+}
+
+.button-primary:hover {
+  background-color: #0a58ca;
+  border-color: #0a58ca;
+}
+
+.button-secondary {
+  background-color: #f6f8fa;
+  color: #24292f;
+  border-color: rgba(27, 31, 36, 0.15);
+}
+
+.button-secondary:hover {
+  background-color: #f3f4f6;
+  border-color: rgba(27, 31, 36, 0.15);
+}
+
+/* Card styles */
+.card {
+  background: white;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(27, 31, 36, 0.1);
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: #24292f;
+}
+
+/* Grid layout */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* Alert styles */
+.alert {
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.alert-error {
+  background-color: #ffebe9;
+  border: 1px solid #ffc9c9;
+  color: #cf222e;
+}
+
+.alert-warning {
+  background-color: #fff8c5;
+  border: 1px solid #d4a72c;
+  color: #7d4e00;
+}
+
+.alert-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Loading skeleton */
+.skeleton {
+  background: linear-gradient(90deg, #f6f8fa 0%, #eaeef2 50%, #f6f8fa 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .account-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .button-group {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  
+  .button {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* Chart container */
+.chart-container {
+  height: 300px;
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+/* Campaign list */
+.campaign-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.campaign-item {
+  padding: 12px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+}
+
+.campaign-info h4 {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.campaign-info p {
+  margin: 0;
+  font-size: 12px;
+  color: #57606a;
+}
+
+/* Utility classes */
+.mb-0 { margin-bottom: 0; }
+.mb-1 { margin-bottom: 8px; }
+.mb-2 { margin-bottom: 16px; }
+.mb-3 { margin-bottom: 24px; }
+.mt-0 { margin-top: 0; }
+.mt-1 { margin-top: 8px; }
+.mt-2 { margin-top: 16px; }
+.text-muted { color: #57606a; }
