@@ -70,7 +70,6 @@
   flex-shrink: 0;
   color: var(--sidebar-icon);
   transition: transform 0.2s ease;
-  margin-top: 0.25rem;
 }
 
 .mr-1 {

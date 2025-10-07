@@ -80,9 +80,9 @@ export interface AdGroupScoreDto {
 
 export interface KeywordDto {
   id: string;
-  text: string;
-  status: string;
-  matchType: string;
+  criterionId: string;
+  status:string;
+  keyword: string;
   adGroupId: string;
   scores?: KeywordScoreDto[];
 }
@@ -92,10 +92,6 @@ export interface KeywordScoreDto {
   keywordId: number;
   date: string;
   qs: number;
-  impressionCount: number;
-  clickCount: number;
-  ctr: number;
-  averageCpc: number;
 }
 
 // ====================

@@ -48,8 +48,9 @@ const GlobalDashboard: React.FC = () => {
   const totalClicks = '0';
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Global Dashboard</h1>
+    <div className="w-full">
+      <div className="container mx-auto p-6">
+        <h1 className="text-2xl font-bold mb-6">Global Dashboard</h1>
       
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -149,6 +150,7 @@ const GlobalDashboard: React.FC = () => {
               />
             </LineChart>
           </ResponsiveContainer>
+        </div>
         </div>
       </div>
     </div>

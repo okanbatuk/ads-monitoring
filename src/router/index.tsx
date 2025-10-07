@@ -3,8 +3,10 @@ import MainLayout from '../layout/MainLayout';
 import GlobalDashboard from '../pages/GlobalDashboard';
 import CampaignPage from '../pages/CampaignPage';
 import MccAccountPage from '../pages/MccAccountPage';
-import MccSubAccountPage  from '../pages/MccSubAccountPage';
+import MccSubAccountPage from '../pages/MccSubAccountPage';
 import NotFound from '../pages/NotFound';
+import AdGroupPage from '../pages/AdGroupPage';
+import KeywordPage from '../pages/KeywordPage';
 
 const router = createBrowserRouter([
   {
@@ -27,6 +29,14 @@ const router = createBrowserRouter([
       {
         path: 'accounts/:accoundId/campaigns/:campaignId',
         element: <CampaignPage />,
+      },
+      {
+        path: 'campaigns/:campaignId/adgroups/:adGroupId',
+        element: <AdGroupPage />,
+      },
+      {
+        path: 'adgroups/:adGroupId/keywords/keywordId',
+        element: <KeywordPage />
       },
       {
         path: '*',

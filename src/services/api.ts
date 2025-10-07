@@ -18,6 +18,15 @@ import type {
   PostCampaignBulkScoresRequest,
   PostCampaignBulkScoresResponse,
   GetCampaignScoreResponse,
+  AdGroupDto,
+  GetAdGroupResponse,
+  GetAdGroupScoresResponse,
+  KeywordDto,
+  GetKeywordsResponse,
+  GetKeywordResponse,
+  GetKeywordScoresResponse,
+  PostAdGroupBulkScoresRequest,
+  PostAdGroupBulkScoresResponse,
 } from '../types/api.types';
 
 const API_BASE_URL = 'https://ads-script-api-production.up.railway.app/api'; // Update with your API base URL
@@ -262,5 +271,62 @@ export const useBulkCampaignScores = () => {
         method: 'POST',
         body: JSON.stringify({ ids }),
       }),
+  });
+};
+
+// Keyword endpoints
+export const useKeyword = (keywordId: string) => {
+  return useQuery<GetKeywordResponse>({
+    queryKey: ['keyword', keywordId],
+    queryFn: () => fetchApi<GetKeywordResponse>(`/keywords/${keywordId}`),
+    enabled: !!keywordId,
+  });
+};
+
+export const useKeywordScores = (keywordId: string, days: number) => {
+  return useQuery<GetKeywordScoresResponse>({
+    queryKey: ['keyword', keywordId, 'scores', days],
+    queryFn: () => fetchApi<GetKeywordScoresResponse>(`/keywords/${keywordId}/scores?days=${days}`),
+    enabled: !!keywordId && !!days,
+  });
+};
+
+// Ad Group endpoints
+export const useAdGroup = (adGroupId: string) => {
+  return useQuery<GetAdGroupResponse, Error>({
+    queryKey: ['adGroup', adGroupId],
+    queryFn: () => fetchApi(`/adgroups/${adGroupId}`),
+    enabled: !!adGroupId,
+  });
+};
+
+export const useAdGroupScores = (adGroupId: string, days: number) => {
+  return useQuery<GetAdGroupScoresResponse, Error>({
+    queryKey: ['adGroupScores', adGroupId, days],
+    queryFn: () => fetchApi(`/adgroups/${adGroupId}/scores?days=${days}`),
+    enabled: !!adGroupId,
+  });
+};
+
+interface UseAdGroupKeywordsOptions {
+  enabled?: boolean;
+  [key: string]: any;
+}
+
+export const useAdGroupKeywords = (adGroupId: string, options: UseAdGroupKeywordsOptions = {}) => {
+  return useQuery<GetKeywordsResponse, Error>({
+    queryKey: ['adGroupKeywords', adGroupId],
+    queryFn: () => fetchApi(`/adgroups/${adGroupId}/keywords`),
+    enabled: !!adGroupId && (options.enabled !== undefined ? options.enabled : true),
+    ...options,
+  });
+};
+
+export const useBulkAdGroupScores = () => {
+  return useMutation<PostAdGroupBulkScoresResponse, Error, PostAdGroupBulkScoresRequest>({
+    mutationFn: (data) => fetchApi('/adgroups/bulkscores', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
   });
 };
