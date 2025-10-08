@@ -38,7 +38,13 @@ const getColorForScore = (score: number) => {
 };
 
 // Badge component for status display
-const StatusBadge = ({ status }: { status: string }) => {
+type StatusType = 'ENABLED' | 'PAUSED' | 'REMOVED' | string;
+
+interface StatusBadgeProps {
+  status: StatusType;
+}
+
+const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
   const statusMap: Record<string, { bg: string; text: string }> = {
     ENABLED: { bg: 'bg-green-100', text: 'text-green-800' },
     PAUSED: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
@@ -73,19 +79,17 @@ const AdGroupPage: React.FC = () => {
     error: scoresError
   } = useAdGroupScores(adGroupId!, timeRange);
 
-    // State to track if keywords have been requested
-  const [keywordsRequested, setKeywordsRequested] = useState(false);
-
-  // Fetch keywords only when the keywords tab is active and keywords have been requested
+    // Fetch keywords when component mounts
   const {
     data: keywordsData,
     isLoading: isLoadingKeywords,
     isError: isErrorKeywords,
     error: keywordsError,
     refetch: refetchKeywords
-  } = useAdGroupKeywords(adGroupId!, {
-    enabled: activeTab === 'keywords' && keywordsRequested
-  });
+  } = useAdGroupKeywords(adGroupId!, { enabled: true });
+  
+  // Keep track of whether we've requested keywords for the tab
+  const [keywordsTabLoaded, setKeywordsTabLoaded] = useState(false);
 
   const isLoading = isLoadingAdGroup || isLoadingScores || (activeTab === 'keywords' && isLoadingKeywords);
   const isError = isErrorAdGroup || isErrorScores || (activeTab === 'keywords' && isErrorKeywords);
@@ -94,10 +98,7 @@ const AdGroupPage: React.FC = () => {
   // Handle keywords tab click
   const handleKeywordsTabClick = () => {
     setActiveTab('keywords');
-    if (!keywordsRequested) {
-      setKeywordsRequested(true);
-      refetchKeywords();
-    }
+    refetchKeywords();
   };
 
   // Get bottom 5 keywords by average QS
@@ -229,7 +230,7 @@ const AdGroupPage: React.FC = () => {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
             >
-              Keywords
+              Keywords ({totalKeywords})
             </button>
           </nav>
         </div>
@@ -299,21 +300,24 @@ const AdGroupPage: React.FC = () => {
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold mb-4">Bottom 5 Keywords (by QS)</h2>
               {bottomKeywords.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {bottomKeywords.map((keyword) => (
-                    <div key={keyword.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded">
-                      <div className="flex-1">
-                        <div className="font-medium">{keyword.keyword}</div>
+                    <div key={keyword.id} className="flex items-center p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                      <div className="w-1/4 font-medium text-gray-900 truncate pr-4">
+                        {keyword.keyword}
                       </div>
-                      <div className="flex items-center space-x-4">
-                        <div className="w-24">
-                          <KeywordSparkline scores={keyword.scores || []} />
+                      <div className="flex-1 flex items-center gap-4">
+                        <div className="flex-1 max-w-3xl h-10">
+                          <KeywordSparkline width={650} scores={keyword.scores || []} />
                         </div>
-                        <div className="w-12 text-right">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${keyword.avgQs >= 7 ? 'bg-green-100 text-green-800' :
-                            keyword.avgQs >= 4 ? 'bg-yellow-100 text-yellow-800' :
+                        <div className="w-16 flex-shrink-0 text-right">
+                          <span 
+                            className={`inline-flex items-center justify-center w-14 px-2.5 py-1 rounded-full text-xs font-medium ${
+                              keyword.avgQs >= 7 ? 'bg-green-100 text-green-800' :
+                              keyword.avgQs >= 4 ? 'bg-yellow-100 text-yellow-800' :
                               'bg-red-100 text-red-800'
-                            }`}>
+                            }`}
+                          >
                             {keyword.avgQs.toFixed(1)}
                           </span>
                         </div>

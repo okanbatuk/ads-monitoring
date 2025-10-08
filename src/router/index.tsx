@@ -35,7 +35,7 @@ const router = createBrowserRouter([
         element: <AdGroupPage />,
       },
       {
-        path: 'adgroups/:adGroupId/keywords/keywordId',
+        path: 'adgroups/:adGroupId/keywords/:keywordId',
         element: <KeywordPage />
       },
       {

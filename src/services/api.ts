@@ -316,7 +316,7 @@ interface UseAdGroupKeywordsOptions {
 export const useAdGroupKeywords = (adGroupId: string, options: UseAdGroupKeywordsOptions = {}) => {
   return useQuery<GetKeywordsResponse, Error>({
     queryKey: ['adGroupKeywords', adGroupId],
-    queryFn: () => fetchApi(`/adgroups/${adGroupId}/keywords`),
+    queryFn: () => fetchApi(`/adgroups/${adGroupId}/keywords?include=true`),
     enabled: !!adGroupId && (options.enabled !== undefined ? options.enabled : true),
     ...options,
   });

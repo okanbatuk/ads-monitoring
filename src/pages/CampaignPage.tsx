@@ -1,15 +1,40 @@
-import { useState, useMemo } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { FiArrowLeft } from 'react-icons/fi';
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  Legend, ResponsiveContainer
-} from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useCampaign, useCampaignScores, useCampaignAdGroups } from '../services';
-import { CampaignDto, AdGroupDto, CampaignScoreDto } from '../types/api.types';
+import { CampaignDto, CampaignScoreDto } from '../types/api.types';
+
+// Skeleton Loader Component
+const SkeletonLoader = ({ className = '', count = 1 }: { className?: string; count?: number }) => (
+  <>
+    {Array.from({ length: count }).map((_, i) => (
+      <div key={i} className={`animate-pulse bg-gray-200 rounded ${className}`} />
+    ))}
+  </>
+);
+
+const TIME_RANGES = [7, 30, 90, 365];
+
+// Badge component for status display
+const StatusBadge = ({ status }: { status: string }) => {
+  const statusMap: Record<string, { bg: string; text: string }> = {
+    ENABLED: { bg: 'bg-green-100', text: 'text-green-800' },
+    PAUSED: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
+    REMOVED: { bg: 'bg-red-100', text: 'text-red-800' },
+  };
+
+  const statusStyle = statusMap[status] || { bg: 'bg-gray-100', text: 'text-gray-800' };
+
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}>
+      {status}
+    </span>
+  );
+};
 
 // Extend the CampaignDto to include metrics
-interface CampaignWithMetrics extends Omit<CampaignDto, 'metrics'> {
+interface CampaignWithMetrics extends CampaignDto {
   metrics?: {
     impressions: number;
     clicks: number;
@@ -17,110 +42,49 @@ interface CampaignWithMetrics extends Omit<CampaignDto, 'metrics'> {
     conversions: number;
   };
 }
-import './CampaignPage.css';
 
 // Define chart data type
 interface ChartDataPoint {
   date: string;
   qs: number;
-  adGroupCount: number;
-}
-
-// Constants
-const TIME_RANGES = [
-  { value: '7', label: 'Last 7 days' },
-  { value: '30', label: 'Last 30 days' },
-  { value: '90', label: 'Last 90 days' },
-];
-
-const CHART_COLORS = ['#4dabf7', '#74c0fc', '#4dabf7', '#339af0', '#1c7ed6'];
-
-const Badge = ({
-  children,
-  variant = 'default',
-  className = ''
-}: {
-  children: React.ReactNode;
-  variant?: 'enabled' | 'paused' | 'removed' | 'default';
-  className?: string;
-}) => (
-  <span className={`badge badge-${variant} ${className}`}>
-    {children}
-  </span>
-);
-
-// Components
-const QSProgress = ({ value }: { value: number }) => (
-  <div className="w-full bg-gray-200 rounded-full h-2.5">
-    <div
-      className="bg-blue-600 h-2.5 rounded-full"
-      style={{ width: `${value * 10}%` }}
-    ></div>
-  </div>
-);
-
-interface AdGroupCardProps {
-  adGroup: AdGroupDto;
-}
-
-const AdGroupCard = ({ adGroup }: AdGroupCardProps) => {
-  // newest first
-  const scores = adGroup.scores?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
-  const currentScore = scores[0]?.qs ?? null;
-  const trend = scores.length > 1
-    ? ((scores[0].qs - scores[scores.length - 1].qs) / scores[scores.length - 1].qs) * 100
-    : undefined;
-
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-4">
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-          {adGroup.name}
-        </h3>
-        <Badge variant={adGroup.status === 'ENABLED' ? 'enabled' : adGroup.status === 'PAUSED' ? 'paused' : 'default'}>
-          {adGroup.status}
-        </Badge>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 mt-4">
-        <div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Quality Score</p>
-          <div className="flex items-center mt-1">
-            <span className="text-lg font-semibold text-gray-900 dark:text-white">
-              {currentScore !== null ? currentScore.toFixed(1) : 'N/A'}
-            </span>
-            {trend !== undefined && (
-              <span className={`ml-2 text-sm ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {trend > 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}%
-              </span>
-            )}
-          </div>
-          <div className="mt-2">
-            <span className="text-xs text-gray-500 dark:text-gray-400">Keywords: {adGroup.scores?.[0]?.keywordCount ?? 0}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 const CampaignPage = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
-  const [days, setDays] = useState('7');
-  const [activeTab, setActiveTab] = useState('overview');
+  const [timeRange, setTimeRange] = useState(30);
+  const [activeTab, setActiveTab] = useState<'overview' | 'adgroups'>('overview');
 
-  const { data: campaignResponse, isLoading: isLoadingCampaign } = useCampaign(campaignId || '');
-  const { data: scoresResponse, isLoading: isLoadingScores } = useCampaignScores(campaignId || '', parseInt(days));
-  const { data: adGroupsResponse, isLoading: isLoadingAdGroups } = useCampaignAdGroups(campaignId || '');
+  const {
+    data: campaignResponse,
+    isLoading: isLoadingCampaign,
+    isError: isErrorCampaign,
+    error: campaignError
+  } = useCampaign(campaignId || '');
 
-  const isLoading = isLoadingCampaign || isLoadingScores || isLoadingAdGroups;
-  const campaignData = campaignResponse?.data as CampaignWithMetrics | undefined;
-  const scoresData = (scoresResponse?.data?.scores || []) as CampaignScoreDto[];
-  const adGroupCount = scoresResponse?.data?.total || 0;
-  const adGroupsData = (adGroupsResponse?.data?.adGroups || []) as AdGroupDto[];
-  const totalAdGroups = (adGroupsResponse?.data?.total || 0);
+  const {
+    data: scoresResponse,
+    isLoading: isLoadingScores,
+    isError: isErrorScores,
+    error: scoresError
+  } = useCampaignScores(campaignId || '', timeRange);
+
+  const {
+    data: adGroupsResponse,
+    isLoading: isLoadingAdGroups,
+    isError: isErrorAdGroups,
+    error: adGroupsError,
+    refetch: refetchAdGroups
+  } = useCampaignAdGroups(campaignId || '');
+
+  const isLoading = isLoadingCampaign || isLoadingScores || (activeTab === 'adgroups' && isLoadingAdGroups);
+  const isError = isErrorCampaign || isErrorScores || (activeTab === 'adgroups' && isErrorAdGroups);
+  const error = campaignError || scoresError || (activeTab === 'adgroups' ? adGroupsError : null);
+
+  const campaign = campaignResponse?.data as CampaignWithMetrics | undefined;
+  const scoresData = scoresResponse?.data?.scores || [];
+  const adGroupsData = adGroupsResponse?.data?.adGroups || [];
+  const adGroupCount = adGroupsResponse?.data?.total || 0;
 
   // Calculate current quality score and trend from scores data
   const { currentScore, trend } = useMemo(() => {
@@ -143,317 +107,211 @@ const CampaignPage = () => {
     };
   }, [scoresData]);
 
-  // Format date for display
-  const formatDate = (dateString?: string): string => {
-    if (!dateString) return 'N/A';
-    try {
-      return new Date(dateString).toLocaleDateString();
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return 'Invalid date';
-    }
-  };
-
   // Format scores data for charts
   const chartData: ChartDataPoint[] = useMemo(() => {
     if (!scoresData?.length) return [];
+
     // Sort by date to ensure chronological order
-    const sortedScores = [...scoresData].sort((a, b) => 
+    const sortedScores = [...scoresData].sort((a, b) =>
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
-    
+
     return sortedScores.map((item) => ({
-      date: formatDate(item.date),
-      qs: item.qs || 0,
-      adGroupCount: 0, // This field is not in the DTO, defaulting to 0
+      date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      qs: item.qs || 0
     }));
   }, [scoresData]);
 
-  // Default metrics object with all values set to 0
-  const defaultMetrics = {
-    impressions: 0,
-    clicks: 0,
-    ctr: 0,
-    conversions: 0,
-  };
-  
-  // Safely access metrics with fallback to default values
-  const metrics = campaignData?.metrics || defaultMetrics;
-
-  const handleBack = () => {
-    if (location.state?.from) {
-      navigate(location.state.from);
-    } else {
-      navigate(-1);
-    }
-  };
-
-
-  // Get top ad groups by quality score (first 5)
-  const topAdGroups = useMemo(() => {
-    if (!adGroupsData?.length) return [];
-    
-    // Create a new array to avoid mutating the original
-    const sortedAdGroups = [...adGroupsData]
-      // Filter out ad groups without scores
-      .filter(adGroup => adGroup.scores?.[0]?.qs !== undefined)
-      // Sort by quality score in descending order
-      .sort((a, b) => (b.scores?.[0]?.qs || 0) - (a.scores?.[0]?.qs || 0))
-      // Take top 5
-      .slice(0, 5);
-      
-    return sortedAdGroups;
-  }, [adGroupsData]);
-
+  // Show loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="w-full p-6">
+        <div className="container mx-auto">
+          <SkeletonLoader className="h-8 w-64 mb-4" />
+          <SkeletonLoader className="h-6 w-48 mb-8" />
+          <SkeletonLoader className="h-64 w-full mb-8" />
+          <SkeletonLoader className="h-32 w-full mb-8" />
+        </div>
       </div>
     );
   }
 
-  if (!campaignData) {
+  // Show error state
+  if (isError) {
     return (
-      <div className="p-6">
-        <button
-          onClick={handleBack}
-          className="flex items-center text-blue-600 hover:text-blue-800 mb-4"
-        >
-          <FiArrowLeft className="mr-2" /> Back
-        </button>
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
-          <p className="font-bold">Error</p>
-          <p>Failed to load campaign data. Please try again later.</p>
+      <div className="w-full p-6">
+        <div className="container mx-auto bg-red-50 border border-red-200 rounded-lg p-4">
+          <h2 className="text-lg font-medium text-red-800">Error loading data</h2>
+          <p className="text-red-700 mt-1">{error?.message || 'An unknown error occurred'}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-3 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container">
-      {/* Header */}
-      <header className="header">
-        <button
-          onClick={handleBack}
-          className="back-button"
-        >
-          <FiArrowLeft className="mr-2" /> Back
-        </button>
-        
-        <div className="title-container">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
           <div>
-            <h1 className="title">{campaignData.name}</h1>
-            <div style={{ display: 'flex', alignItems: 'center', marginTop: '0.5rem' }}>
-              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                campaignData.status === 'ENABLED' 
-                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                  : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-              }`}>
-                {campaignData.status}
-              </span>
-              <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                ID: {campaignData.id}
-              </span>
+            <div className='flex items-center gap-3'>
+              <h1 className="text-2xl font-bold text-gray-900">{campaign?.name || 'Campaign'}</h1>
+              <StatusBadge status={campaign?.status || 'UNKNOWN'} />
             </div>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <select
-              value={days}
-              onChange={(e) => setDays(e.target.value)}
-              className="select"
-            >
-              {TIME_RANGES.map((range) => (
-                <option key={range.value} value={range.value}>
-                  {range.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </header>
+            <div>
 
-      {/* Tabs */}
-      <div className="tabs">
-        {['overview', 'adgroups'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`tab ${activeTab === tab ? 'tab-active' : ''}`}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {/* Main Content */}
-      <main>
-        {/* Campaign Stats */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <p className="stat-label">Quality Score</p>
-            <div style={{ display: 'flex', alignItems: 'baseline' }}>
-              <p className="stat-value">
-                {currentScore?.toFixed(1) || 'N/A'}
+              <p className="text-sm text-gray-500 mt-1">
+                Campaign ID: {campaignId}
               </p>
-              {trend !== undefined && trend !== 0 && (
-                <span style={{
-                  marginLeft: '0.5rem',
-                  fontSize: '0.875rem',
-                  color: trend > 0 ? '#10b981' : '#ef4444'
-                }}>
-                  {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%
-                </span>
-              )}
             </div>
-            <div style={{ marginTop: '0.5rem' }}>
-              <QSProgress value={currentScore} />
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <p className="stat-label">Ad Groups</p>
-            <p className="stat-value">{adGroupCount}</p>
-          </div>
-
-          <div className="stat-card">
-            <p className="stat-label">Status</p>
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              campaignData.status === 'ENABLED' 
-                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-            }`}>
-              {campaignData.status}
-            </span>
           </div>
         </div>
 
-        {/* Tab Content */}
-        {activeTab === 'overview' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {/* Metrics Grid */}
-            <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
-              <div className="stat-card">
-                <p className="stat-label">Impressions</p>
-                <p className="stat-value">
-                  {metrics.impressions.toLocaleString()}
-                </p>
-              </div>
+        {/* Tabs */}
+        <div className="border-b border-gray-200 mb-6">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+            >
+              Overview
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('adgroups');
+                refetchAdGroups();
+              }}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'adgroups'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+            >
+              Ad Groups ({adGroupCount})
+            </button>
+          </nav>
+        </div>
 
-              <div className="stat-card">
-                <p className="stat-label">Clicks</p>
-                <p className="stat-value">
-                  {metrics.clicks.toLocaleString()}
-                </p>
-              </div>
+        {/* Date Range Selector */}
+        <div className="flex justify-end items-center mb-6">
+          <div className="inline-flex rounded-md shadow-sm">
+            {TIME_RANGES.map((days) => (
+              <button
+                key={days}
+                type="button"
+                onClick={() => setTimeRange(days)}
+                className={`px-4 py-2 text-sm font-medium ${timeRange === days
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-50'
+                  } ${days === 7 ? 'rounded-l-md' : ''} ${days === 365 ? 'rounded-r-md' : ''
+                  } border border-gray-300`}
+              >
+                {days}d
+              </button>
+            ))}
+          </div>
+        </div>
 
-              <div className="stat-card">
-                <p className="stat-label">CTR</p>
-                <p className="stat-value">
-                  {(metrics.ctr * 100).toFixed(2)}%
-                </p>
-              </div>
-
-              <div className="stat-card">
-                <p className="stat-label">Conversions</p>
-                <p className="stat-value">
-                  {metrics.conversions.toLocaleString()}
-                </p>
-              </div>
-            </div>
-
-            {/* Charts */}
-            <div className="charts-grid">
-              <div className="chart-container">
-                <h3 className="chart-title">Quality Score Trend</h3>
-                <div style={{ height: '20rem' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis dataKey="date" stroke="#6b7280" />
-                      <YAxis domain={[0, 10]} stroke="#6b7280" />
-                      <Tooltip />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="qs"
-                        name="Quality Score"
-                        stroke="#3b82f6"
-                        strokeWidth={2}
-                        dot={false}
-                        activeDot={{ r: 6 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              <div className="chart-container">
-                <h3 className="chart-title">Ad Groups Trend</h3>
-                <div style={{ height: '20rem' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis dataKey="date" stroke="#6b7280" />
-                      <YAxis stroke="#6b7280" />
-                      <Tooltip />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="adGroupCount"
-                        name="Ad Groups"
-                        stroke="#10b981"
-                        strokeWidth={2}
-                        dot={false}
-                        activeDot={{ r: 6 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-
-            {/* Top Ad Groups */}
-            <div className="ad-groups-container">
-              <div className="ad-groups-header">
-                <h3 className="ad-groups-title">Top Ad Groups by Quality Score</h3>
-              </div>
-              <div className="ad-groups-list">
-                {topAdGroups.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {topAdGroups.map((adGroup) => (
-                      <AdGroupCard key={adGroup.id} adGroup={adGroup} />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="noData">No ad groups found</p>
+        {activeTab === 'overview' ? (
+          <div className="bg-white rounded-lg shadow p-6 mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-medium text-gray-900">Quality Score Trend</h2>
+              <div className="flex items-center">
+                <span className="text-sm text-gray-500 mr-2">Current:</span>
+                <span className="text-lg font-semibold text-gray-900">
+                  {currentScore.toFixed(1)}
+                </span>
+                {trend !== 0 && (
+                  <span className={`ml-2 text-sm ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%
+                  </span>
                 )}
               </div>
             </div>
-          </div>
-        )}
-
-        {activeTab === 'adgroups' && (
-          <div className="ad-groups-container">
-            <div className="ad-groups-header">
-              <h3 className="ad-groups-title">Ad Groups</h3>
-            </div>
-            <div className="ad-groups-list">
-              {/* TODO: add total ad groups count */}
-              {adGroupsData.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {adGroupsData.map((adGroup) => (
-                    <AdGroupCard key={adGroup.id} adGroup={adGroup} />
-                  ))}
-                </div>
+            <div className="h-64">
+              {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      domain={[0, 10]}
+                      tickCount={6}
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '0.375rem',
+                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="qs"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2, fill: '#fff' }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
               ) : (
-                <p className="no-data">No ad groups found</p>
+                <div className="h-full flex items-center justify-center text-gray-500">
+                  No data available for the selected period
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="divide-y divide-gray-200">
+              {adGroupsData.length > 0 ? (
+                adGroupsData.map((adGroup) => (
+                  <div
+                    key={adGroup.id}
+                    className="px-6 py-4 hover:bg-gray-50 cursor-pointer"
+                    onClick={() => navigate(`/adgroups/${adGroup.id}`)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-900">{adGroup.name}</h3>
+                        <p className="text-sm text-gray-500">ID: {adGroup.id}</p>
+                      </div>
+                      <div className="flex items-center">
+                        <StatusBadge status={adGroup.status} />
+                        <svg className="ml-2 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="px-6 py-4 text-center text-gray-500">
+                  No ad groups found
+                </div>
               )}
             </div>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 };

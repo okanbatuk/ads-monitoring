@@ -12,17 +12,18 @@ export default function Header({ isOpen, onToggleSidebar }: HeaderProps) {
 
   return (
     <header className="header">
-      <button 
-        className="menu-button" 
-        onClick={onToggleSidebar}
-        aria-label={isOpen ? 'Close menu' : 'Open menu'}
-      >
-        <FiMenu size={24} />
-      </button>
-      
-      <h1 className="header-title">Ads Management Dashboard</h1>
-      
-      <button 
+      <div className='flex items-center gap-2'>
+        <button
+          className="menu-button"
+          onClick={onToggleSidebar}
+          aria-label={isOpen ? 'Close menu' : 'Open menu'}
+        >
+          <FiMenu size={24} />
+        </button>
+        <h1 className="header-title">Ads Management Dashboard</h1>
+      </div>
+
+      <button
         className="theme-toggle"
         onClick={toggleTheme}
         aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}

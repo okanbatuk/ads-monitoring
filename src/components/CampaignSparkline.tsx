@@ -1,17 +1,19 @@
 import React from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
-import { KeywordScoreDto } from '../types/api.types';
+import { CampaignScoreDto } from '../types/api.types';
 
-interface KeywordSparklineProps {
-  scores: KeywordScoreDto[];
+interface CampaignSparklineProps {
+  scores: CampaignScoreDto[];
   width?: number | string;
   height?: number;
+  showTrend?: boolean;
 }
 
-export const KeywordSparkline: React.FC<KeywordSparklineProps> = ({ 
+export const CampaignSparkline: React.FC<CampaignSparklineProps> = ({ 
   scores = [], 
   width = 500, 
-  height = 30 
+  height = 30,
+  showTrend = true
 }) => {
   if (!scores || scores.length === 0) {
     return (
@@ -32,9 +34,14 @@ export const KeywordSparkline: React.FC<KeywordSparklineProps> = ({
     qs: score.qs,
   }));
 
+  // Calculate average QS
+  const avgQs = scores.length > 0 
+    ? scores.reduce((sum, score) => sum + score.qs, 0) / scores.length 
+    : 0;
+
   // Calculate trend (simple difference between first and last score)
   const trend = data.length > 1 
-    ? ((data[data.length - 1].qs - data[0].qs) / data[0].qs) * 100 
+    ? ((data[data.length - 1].qs - data[0].qs) / (data[0].qs || 1)) * 100 
     : 0;
 
   return (
@@ -59,11 +66,16 @@ export const KeywordSparkline: React.FC<KeywordSparklineProps> = ({
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <div className={`text-sm font-medium ${trend >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-        {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}%
-      </div>
+      {showTrend && (
+        <div className="flex items-center space-x-2">
+          <span className="text-sm font-medium">{avgQs.toFixed(1)}</span>
+          <span className={`text-sm font-medium ${trend >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}%
+          </span>
+        </div>
+      )}
     </div>
   );
 };
 
-export default KeywordSparkline;
+export default CampaignSparkline;
