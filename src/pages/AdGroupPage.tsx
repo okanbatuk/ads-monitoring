@@ -17,10 +17,10 @@ const SkeletonLoader = ({ className = '', count = 1 }: { className?: string; cou
 );
 
 const TIME_RANGES = [
-  { days: 7, label: '7 days' },
-  { days: 30, label: '30 days' },
-  { days: 90, label: '90 days' },
-  { days: 365, label: '1 year' },
+  { days: 7, label: '7d' },
+  { days: 30, label: '30d' },
+  { days: 90, label: '90d' },
+  { days: 365, label: '1y' },
 ];
 
 const QS_COLORS = {
@@ -177,10 +177,10 @@ const AdGroupPage: React.FC = () => {
   }
 
   return (
-    <div className="w-full">
-      <div className="container mx-auto p-6">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header with breadcrumb */}
-        <div className="mb-6">
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
           {/* <nav className="flex mb-4" aria-label="Breadcrumb">
             <ol className="inline-flex items-center space-x-1 md:space-x-2">
               <li>
@@ -236,7 +236,7 @@ const AdGroupPage: React.FC = () => {
         </div>
 
         {/* Time Range Selector */}
-        <div className="flex justify-end">
+        <div className="flex justify-end items-center mb-6">
           <div className="inline-flex rounded-md shadow-sm">
             {TIME_RANGES.map((range) => (
               <button

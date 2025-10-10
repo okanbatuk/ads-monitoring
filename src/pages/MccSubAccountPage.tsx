@@ -7,7 +7,8 @@ import {
   useAccountCampaigns,
   useMccAccounts
 } from '../services/api';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Area, AreaChart } from 'recharts';
+import { FiArrowUpRight, FiArrowDownRight } from 'react-icons/fi';
 import type {
   AccountDto,
   CampaignDto,
@@ -218,10 +219,8 @@ const Container = ({ children, className = '', size = 'xl' }: { children: React.
 interface MccSubAccountPageProps { }
 
 export const MccSubAccountPage: React.FC<MccSubAccountPageProps> = () => {
-  console.log('MccSubAccountPage rendered');
   const { subAccountId } = useParams<{ subAccountId: string }>();
   const accountId = subAccountId; // Keep using accountId in the rest of the component for consistency
-  console.log('Account ID from URL:', accountId);
   const navigate = useNavigate();
   const location = useLocation();
   const [timeRange, setTimeRange] = useState(30);
@@ -261,25 +260,6 @@ export const MccSubAccountPage: React.FC<MccSubAccountPageProps> = () => {
     scores: Array.isArray(campaign.scores) ? campaign.scores : []
   }));
   const campaignCount = campaignsResponse?.data?.total || 0;
-
-  // Debug logs
-  useEffect(() => {
-    console.log('Active Tab:', activeTab);
-    console.log('Campaigns data:', campaigns);
-    console.log('Campaigns response:', campaignsResponse);
-    console.log('Is loading campaigns:', isLoadingCampaigns);
-    console.log('Campaigns error:', campaignsError);
-
-    if (campaigns.length > 0) {
-      console.log('First campaign sample:', {
-        id: campaigns[0].id,
-        name: campaigns[0].name,
-        status: campaigns[0].status,
-        scores: campaigns[0].scores,
-        hasScores: Array.isArray(campaigns[0].scores) && campaigns[0].scores.length > 0
-      });
-    }
-  }, [activeTab, campaigns, campaignsResponse, isLoadingCampaigns, campaignsError]);
 
   // Get last 5 campaigns for the overview with their scores
   const recentCampaigns = useMemo(() => {
@@ -402,8 +382,6 @@ export const MccSubAccountPage: React.FC<MccSubAccountPageProps> = () => {
                   </button>
                   <button
                     onClick={() => {
-                      console.log('Switching to campaigns tab');
-                      console.log('Current campaigns data:', campaigns);
                       setActiveTab('campaigns');
                     }}
                     className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'campaigns'
@@ -430,101 +408,134 @@ export const MccSubAccountPage: React.FC<MccSubAccountPageProps> = () => {
               </div>
               <div className="mt-8">
                 <h2 className="text-xl font-semibold mb-4">Top Campaigns (by QS)</h2>
-                <div className="space-y-3">
-                  {recentCampaigns.map((campaign) => {
-                    const latestScore = campaign.scores.length > 0 ? campaign.scores[0].qs : 0;
+                <div className="bg-white rounded-lg shadow overflow-hidden">
+                  <div className="divide-y divide-gray-200">
+                    {recentCampaigns.map((campaign) => {
+                      const latestScore = campaign.scores?.length > 0 ? campaign.scores[0].qs : 0;
+                      const previousScore = campaign.scores?.length > 1 ? campaign.scores[1].qs : latestScore;
+                      const trend = latestScore - previousScore;
+                      const trendPercentage = previousScore ? ((latestScore - previousScore) / previousScore) * 100 : 0;
 
-                    return (
-                      <div key={campaign.id} className="flex items-center p-3 bg-white rounded-lg shadow hover:bg-gray-50 transition-colors">
-                        <div className="w-1/3 font-medium text-gray-900 truncate pr-4">
-                          {campaign.name}
-                        </div>
-                        <div className="flex-1 flex items-center gap-4">
-                          <div className="flex-1 max-w-3xl h-10">
-                            <CampaignSparkline
-                              scores={campaign.scores}
-                              width={600}
+                      return (
+                        <div
+                          key={campaign.id}
+                          className="px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                          onClick={() => navigate(`/campaigns/${campaign.id}`)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-3">
+                                <h3 className="text-sm font-medium text-gray-900 truncate">
+                                  {campaign.name}
+                                </h3>
+                                <StatusBadge status={campaign.status} />
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">ID: {campaign.id}</p>
+                            </div>
+                            <div className="ml-4 flex-shrink-0">
+                              <div className="text-sm font-medium text-gray-900">
+                                {latestScore.toFixed(1)}/10
+                              </div>
+                              {!isNaN(trendPercentage) && (
+                                <div className={`text-xs ${trend >= 0 ? 'text-green-600' : 'text-red-600'} flex items-center justify-end`}>
+                                  {trend >= 0 ? (
+                                    <FiArrowUpRight className="mr-1" />
+                                  ) : (
+                                    <FiArrowDownRight className="mr-1" />
+                                  )}
+                                  {Math.abs(trendPercentage).toFixed(1)}%
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="mt-2 h-10 w-full">
+                            <CampaignSparkline 
+                              scores={campaign.scores || []} 
+                              width="100%"
                               height={40}
                               showTrend={false}
                             />
                           </div>
-                          <div className="w-24 flex-shrink-0 text-right">
-                            <span
-                              className={`inline-flex items-center justify-center w-20 px-2.5 py-1 rounded-full text-xs font-medium ${latestScore >= 7 ? 'bg-green-100 text-green-800' :
-                                latestScore >= 4 ? 'bg-yellow-100 text-yellow-800' :
-                                  'bg-red-100 text-red-800'
-                                }`}
-                            >
-                              {latestScore.toFixed(1)} QS
-                            </span>
-                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </>
           ) : (
-            <div className="mt-8">
-              <h2 className="text-2xl font-semibold mb-6">All Campaigns ({campaignCount})</h2>
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="p-4 border-b border-gray-200">
+                <h2 className="text-lg font-medium text-gray-900">Campaigns</h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  {campaigns.length} campaigns found
+                </p>
+              </div>
               {campaigns.length > 0 ? (
-                <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" className="px-6 py-3 w-1/5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Campaign Name
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
+                        <th scope="col" className="px-6 py-3 w-3/5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          QS Trend
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Quality Score
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Trend
+                        <th scope="col" className="px-6 py-3 w-1/5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Current QS
                         </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {campaigns.map((campaign) => {
-                        const latestScore = campaign.scores?.length > 0 ? campaign.scores[0].qs : 0;
-                        const previousScore = campaign.scores?.length > 1 ? campaign.scores[1].qs : latestScore;
+                        const scores = campaign.scores || [];
+                        const latestScore = scores.length > 0 ? scores[0].qs : 0;
+                        const previousScore = scores.length > 1 ? scores[1].qs : latestScore;
                         const trend = latestScore - previousScore;
-
+                        const trendPercentage = previousScore ? (trend / previousScore) * 100 : 0;
                         return (
-                          <tr key={campaign.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">{campaign.name}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                          <tr 
+                            key={campaign.id}
+                            className="hover:bg-gray-50 cursor-pointer"
+                            onClick={() => navigate(`/campaigns/${campaign.id}`)}
+                          >
+                            <td className="px-6 py-4 w-1/5 whitespace-nowrap">
+                              <div className="flex gap-2 items-center text-sm font-medium text-gray-900">
+                                {campaign.name}
                               <StatusBadge status={campaign.status} />
+                              </div>
+                              <div className="text-xs text-gray-500 p-1">ID: {campaign.id}</div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                ${latestScore >= 7 ? 'bg-green-100 text-green-800' :
-                                  latestScore >= 4 ? 'bg-yellow-100 text-yellow-800' :
+                            <td className="px-6 py-4 w-3/5 whitespace-nowrap">
+                              <div className="w-full min-w-[200px]">
+                                <CampaignSparkline 
+                                  scores={scores} 
+                                  width="100%"
+                                  height={40}
+                                  showTrend={false}
+                                />
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 w-1/5 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                  ${latestScore >= 7 ? 'bg-green-100 text-green-800' :
+                                    latestScore >= 4 ? 'bg-yellow-100 text-yellow-800' :
                                     'bg-red-100 text-red-800'}`}>
-                                {latestScore.toFixed(1)}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {trend !== 0 && (
-                                <span className={`inline-flex items-center ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {trend > 0 ? (
-                                    <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
-                                    </svg>
-                                  ) : (
-                                    <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M12 13a1 1 0 100 2h5a1 1 0 001-1v-5a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586l-4.293-4.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414 14.586 13H12z" clipRule="evenodd" />
-                                    </svg>
-                                  )}
-                                  {Math.abs(trend).toFixed(1)}
+                                  {latestScore.toFixed(1)}
                                 </span>
-                              )}
-                              {trend === 0 && <span className="text-gray-400">-</span>}
+                                {!isNaN(trendPercentage) && trendPercentage !== 0 && (
+                                  <span className={`ml-2 text-xs ${trend >= 0 ? 'text-green-600' : 'text-red-600'} flex items-center`}>
+                                    {trend >= 0 ? (
+                                      <FiArrowUpRight className="mr-0.5" size={14} />
+                                    ) : (
+                                      <FiArrowDownRight className="mr-0.5" size={14} />
+                                    )}
+                                    {Math.abs(trendPercentage).toFixed(1)}%
+                                  </span>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
@@ -539,8 +550,6 @@ export const MccSubAccountPage: React.FC<MccSubAccountPageProps> = () => {
               )}
             </div>
           )}
-
-
         </div>
       </div>
     </div>

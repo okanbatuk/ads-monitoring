@@ -1,19 +1,19 @@
 import React from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
-import { CampaignScoreDto } from '../types/api.types';
+import { AdGroupScoreDto } from '../types/api.types';
 
-interface CampaignSparklineProps {
-  scores: CampaignScoreDto[];
+interface AdGroupSparklineProps {
+  scores: AdGroupScoreDto[];
   width?: number | string;
   height?: number;
-  showTrend?: boolean;
+  onClick?: () => void;
 }
 
-export const CampaignSparkline: React.FC<CampaignSparklineProps> = ({ 
+export const AdGroupSparkline: React.FC<AdGroupSparklineProps> = ({ 
   scores = [], 
   width = 500, 
   height = 30,
-  showTrend = true
+  onClick
 }) => {
   if (!scores || scores.length === 0) {
     return (
@@ -34,18 +34,13 @@ export const CampaignSparkline: React.FC<CampaignSparklineProps> = ({
     qs: score.qs,
   }));
 
-  // Calculate average QS
-  const avgQs = scores.length > 0 
-    ? scores.reduce((sum, score) => sum + score.qs, 0) / scores.length 
-    : 0;
-
   // Calculate trend (simple difference between first and last score)
   const trend = data.length > 1 
     ? ((data[data.length - 1].qs - data[0].qs) / (data[0].qs || 1)) * 100 
     : 0;
 
   return (
-    <div className="flex items-center space-x-2">
+    <div className="flex items-center space-x-2 w-full">
       <div style={{ width, height }} className="text-xs flex-grow">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
@@ -66,16 +61,11 @@ export const CampaignSparkline: React.FC<CampaignSparklineProps> = ({
           </LineChart>
         </ResponsiveContainer>
       </div>
-      {showTrend && (
-        <div className="flex items-center space-x-2">
-          <span className="text-sm font-medium">{avgQs.toFixed(1)}</span>
-          <span className={`text-sm font-medium ${trend >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-            {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}%
-          </span>
-        </div>
-      )}
+      <div className={`text-sm font-medium min-w-[60px] text-right ${trend >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+        {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}%
+      </div>
     </div>
   );
 };
 
-export default CampaignSparkline;
+export default AdGroupSparkline;
