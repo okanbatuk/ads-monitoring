@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiArrowUpRight, FiArrowDownRight } from 'react-icons/fi';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { useCampaign, useCampaignScores, useCampaignAdGroups, useAdGroupScores } from '../services';
 import { AdGroupSparkline } from '../components/AdGroupSparkline';
 import { CampaignDto, CampaignScoreDto } from '../types/api.types';
+import { format, startOfWeek, subDays, addDays, parse } from 'date-fns';
 
 // Skeleton Loader Component
 const SkeletonLoader = ({ className = '', count = 1 }: { className?: string; count?: number }) => (
@@ -53,7 +54,7 @@ interface ChartDataPoint {
 const CampaignPage = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
   const navigate = useNavigate();
-  const [timeRange, setTimeRange] = useState(30);
+  const [timeRange, setTimeRange] = useState(7);
   const [activeTab, setActiveTab] = useState<'overview' | 'adgroups'>('overview');
 
   const {
@@ -87,7 +88,7 @@ const CampaignPage = () => {
   const adGroupsData = adGroupsResponse?.data?.adGroups || [];
   const adGroupCount = adGroupsResponse?.data?.total || 0;
 
-  // Get bottom 5 ad groups by quality score
+  // Get bottom 5 ad groups by quality score with time range based sparkline data
   const bottomAdGroups = useMemo(() => {
     if (!adGroupsData.length) return [];
 
@@ -95,11 +96,73 @@ const CampaignPage = () => {
     return [...adGroupsData]
       .sort((a, b) => (a.scores?.[0]?.qs || 0) - (b.scores?.[0]?.qs || 0))
       .slice(0, 5)
-      .map(adGroup => ({
-        ...adGroup,
-        score: adGroup.scores?.[0]?.qs || 0
-      }));
-  }, [adGroupsData]);
+      .map(adGroup => {
+        // Create a map of date to score for easy lookup
+        const scoreMap = new Map<string, number>();
+        adGroup.scores?.forEach(score => {
+          const date = parse(score.date, 'dd.MM.yyyy', new Date());
+          scoreMap.set(format(date, 'yyyy-MM-dd'), score.qs);
+        });
+
+        // Generate data points for the selected time range
+        const now = new Date();
+        const startDate = subDays(now, timeRange - 1);
+        
+        // For time ranges > 30 days, group by week
+        if (timeRange > 30) {
+          const weekGroups = new Map<string, { sum: number; count: number }>();
+          
+          // Process each day in the time range
+          for (let i = 0; i < timeRange; i++) {
+            const currentDate = addDays(startDate, i);
+            const weekStart = format(startOfWeek(currentDate), 'yyyy-MM-dd');
+            const dateStr = format(currentDate, 'yyyy-MM-dd');
+            const score = scoreMap.get(dateStr) || 0;
+            
+            if (!weekGroups.has(weekStart)) {
+              weekGroups.set(weekStart, { sum: 0, count: 0 });
+            }
+            
+            const group = weekGroups.get(weekStart)!;
+            group.sum += score;
+            group.count++;
+          }
+          
+          // Convert week groups to chart data
+          const weeklyData = Array.from(weekGroups.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([weekStart, { sum, count }]) => ({
+              date: format(new Date(weekStart), 'MMM d'),
+              qs: count > 0 ? sum / count : 0 // Weekly average
+            }));
+            
+          return {
+            ...adGroup,
+            score: adGroup.scores?.[0]?.qs || 0,
+            sparklineData: weeklyData
+          };
+        } else {
+          // For 7-30 days, show daily data
+          const dailyData = [];
+          for (let i = 0; i < timeRange; i++) {
+            const currentDate = addDays(startDate, i);
+            const dateStr = format(currentDate, 'yyyy-MM-dd');
+            const displayDate = format(currentDate, timeRange <= 14 ? 'MMM d' : 'd MMM');
+            
+            dailyData.push({
+              date: displayDate,
+              qs: scoreMap.get(dateStr) || 0
+            });
+          }
+          
+          return {
+            ...adGroup,
+            score: adGroup.scores?.[0]?.qs || 0,
+            sparklineData: dailyData
+          };
+        }
+      });
+  }, [adGroupsData, timeRange]);
 
   // Calculate current quality score and trend from scores data
   const { currentScore, trend } = useMemo(() => {
@@ -122,20 +185,76 @@ const CampaignPage = () => {
     };
   }, [scoresData]);
 
-  // Format scores data for charts
-  const chartData: ChartDataPoint[] = useMemo(() => {
-    if (!scoresData?.length) return [];
+  // Format scores data for the chart
+  const chartData = useMemo(() => {
+    if (!scoresData || scoresData.length === 0) {
+      // Return empty data points for the selected time range
+      const emptyData = [];
+      const today = new Date();
+      for (let i = timeRange - 1; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        emptyData.push({
+          date: format(date, 'MMM d'),
+          qs: 0
+        });
+      }
+      return emptyData;
+    }
 
-    // Sort by date to ensure chronological order
-    const sortedScores = [...scoresData].sort((a, b) =>
-      new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
+    // Create a map of dates to scores for easy lookup
+    const scoreMap = new Map<string, number>();
+    scoresData.forEach(score => {
+      // const dateStr = format(new Date(score.date), 'yyyy-MM-dd');
+      const date = parse(score.date, 'dd.MM.yyyy', new Date());
+      const dateStr = format(date, 'yyyy-MM-dd');
+      scoreMap.set(dateStr, score.qs || 0);
+    });
 
-    return sortedScores.map((item) => ({
-      date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      qs: item.qs || 0
-    }));
-  }, [scoresData]);
+    // Generate data points for the selected time range
+    const today = new Date();
+    const dateArray = Array.from({ length: timeRange }, (_, i) => {
+      const date = new Date(today);
+      date.setDate(date.getDate() - (timeRange - 1 - i));
+      return date;
+    });
+
+    // For time ranges > 30 days, group by week for better readability
+    if (timeRange > 30) {
+      const weekGroups = new Map<string, {sum: number, count: number}>();
+      
+      dateArray.forEach(date => {
+        const weekStart = format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+        const dateStr = format(date, 'yyyy-MM-dd');
+        const score = scoreMap.get(dateStr) || 0;
+        
+        if (!weekGroups.has(weekStart)) {
+          weekGroups.set(weekStart, { sum: 0, count: 0 });
+        }
+        const week = weekGroups.get(weekStart)!;
+        week.sum += score;
+        week.count++;
+      });
+      
+      // Convert week groups to chart data points
+      return Array.from(weekGroups.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([weekStart, { sum, count }]) => ({
+          date: format(new Date(weekStart), 'MMM d'),
+          qs: count > 0 ? sum / count : 0 // Weekly average
+        }));
+    } else {
+      // For 7-30 days, show daily data
+      return dateArray.map(date => {
+        const dateStr = format(date, 'yyyy-MM-dd');
+        const displayDate = format(date, timeRange <= 14 ? 'MMM d' : 'd MMM');
+        return {
+          date: displayDate,
+          qs: scoreMap.get(dateStr) || 0
+        };
+      });
+    }
+  }, [scoresData, timeRange]);
 
   // Show loading state
   if (isLoading) {
@@ -255,29 +374,44 @@ const CampaignPage = () => {
                 </div>
               </div>
               <div className="h-64">
-                {chartData.length > 0 ? (
+                {isLoadingScores ? (
+                  <SkeletonLoader className="h-full w-full" />
+                ) : chartData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis
-                        dataKey="date"
+                    <LineChart
+                      data={chartData}
+                      margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                      <XAxis 
+                        dataKey="date" 
                         tick={{ fontSize: 12 }}
                         tickLine={false}
-                        axisLine={false}
+                        axisLine={{ stroke: '#e5e7eb' }}
+                        padding={{ left: 20, right: 20 }}
                       />
-                      <YAxis
+                      <YAxis 
                         domain={[0, 10]}
                         tickCount={6}
                         tick={{ fontSize: 12 }}
                         tickLine={false}
                         axisLine={false}
+                        width={30}
                       />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'white',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '0.375rem',
-                          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+                      <Tooltip 
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="bg-white p-2 border border-gray-200 rounded shadow-lg">
+                                <p className="font-medium">{payload[0].payload.date}</p>
+                                <p className="text-sm">
+                                  <span className="text-gray-600">Quality Score:</span>{' '}
+                                  <span className="font-semibold">{payload[0].value?.toFixed(1)}</span>
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
                         }}
                       />
                       <Line
@@ -286,8 +420,15 @@ const CampaignPage = () => {
                         stroke="#3b82f6"
                         strokeWidth={2}
                         dot={false}
-                        activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2, fill: '#fff' }}
+                        activeDot={{
+                          r: 6,
+                          fill: '#3b82f6',
+                          stroke: '#fff',
+                          strokeWidth: 2
+                        }}
                       />
+                      <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" />
+                      <ReferenceLine y={4} stroke="#f59e0b" strokeDasharray="3 3" />
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
@@ -319,11 +460,18 @@ const CampaignPage = () => {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {bottomAdGroups.map((adGroup) => {
-                        const scores = adGroup.scores || [];
-                        const latestScore = scores.length > 0 ? scores[0].qs : 0;
-                        const previousScore = scores.length > 1 ? scores[1].qs : latestScore;
-                        const trend = latestScore - previousScore;
-                        const trendPercentage = previousScore ? (trend / previousScore) * 100 : 0;
+                        const latestScore = adGroup.score;
+                        const sparklineData = adGroup.sparklineData || [];
+                        
+                        // Calculate trend from sparkline data (first vs last non-zero value)
+                        const nonZeroScores = sparklineData.filter(d => d.qs > 0);
+                        let trendPercentage = 0;
+                        
+                        if (nonZeroScores.length >= 2) {
+                          const firstScore = nonZeroScores[0].qs;
+                          const lastScore = nonZeroScores[nonZeroScores.length - 1].qs;
+                          trendPercentage = ((lastScore - firstScore) / (firstScore || 1)) * 100;
+                        }
 
                         return (
                           <tr 
@@ -344,11 +492,44 @@ const CampaignPage = () => {
                             </td>
                             <td className="px-6 py-4 w-1/2">
                               <div className="w-full h-10">
-                                <AdGroupSparkline 
-                                  scores={scores} 
-                                  width="100%"
-                                  height={40}
-                                />
+                                {sparklineData.length > 0 ? (
+                                  <div className="w-full h-10">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                      <LineChart data={sparklineData}>
+                                        <Line 
+                                          type="monotone" 
+                                          dataKey="qs" 
+                                          stroke="#3b82f6"
+                                          strokeWidth={2}
+                                          dot={false}
+                                          activeDot={{
+                                            r: 4,
+                                            fill: '#3b82f6',
+                                            stroke: '#fff',
+                                            strokeWidth: 2
+                                          }}
+                                        />
+                                        <XAxis 
+                                          dataKey="date" 
+                                          hide 
+                                        />
+                                        <YAxis 
+                                          hide 
+                                          domain={[0, 10]}
+                                        />
+                                        <Tooltip 
+                                          contentStyle={{ fontSize: '12px' }}
+                                          formatter={(value: number) => [`${value.toFixed(1)}`, 'QS']}
+                                          labelFormatter={(label) => `Date: ${label}`}
+                                        />
+                                      </LineChart>
+                                    </ResponsiveContainer>
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-gray-400 h-full flex items-center">
+                                    No data
+                                  </div>
+                                )}
                               </div>
                             </td>
                             <td className="px-6 py-4 w-1/6">
@@ -362,20 +543,11 @@ const CampaignPage = () => {
                                         : 'bg-red-100 text-red-800'
                                   }`}
                                 >
-                                  {latestScore.toFixed(1)}/10
+                                  {latestScore.toFixed(1)}
                                 </span>
-                                {!isNaN(trendPercentage) && trendPercentage !== 0 && (
-                                  <span 
-                                    className={`ml-3 inline-flex items-center text-sm font-medium ${
-                                      trend > 0 ? 'text-green-600' : 'text-red-600'
-                                    }`}
-                                  >
-                                    {trend > 0 ? (
-                                      <FiArrowUpRight className="mr-1" />
-                                    ) : (
-                                      <FiArrowDownRight className="mr-1" />
-                                    )}
-                                    {Math.abs(trendPercentage).toFixed(1)}%
+                                {sparklineData.length > 1 && nonZeroScores.length >= 2 && (
+                                  <span className={`ml-2 text-sm ${trendPercentage >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {trendPercentage >= 0 ? '↑' : '↓'} {Math.abs(trendPercentage).toFixed(1)}%
                                   </span>
                                 )}
                               </div>
@@ -396,7 +568,7 @@ const CampaignPage = () => {
         ) : (
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Ad Groups</h2>
+              <h2 className="text-lg font-bold text-gray-900">Ad Groups</h2>
               <p className="mt-1 text-sm text-gray-500">
                 {isLoadingAdGroups ? 'Loading...' : `${adGroupCount} ad groups found`}
               </p>
@@ -458,6 +630,7 @@ const CampaignPage = () => {
                                 scores={scores} 
                                 width="100%"
                                 height={40}
+                                timeRange={timeRange}
                               />
                             </div>
                           </td>

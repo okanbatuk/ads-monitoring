@@ -149,7 +149,7 @@ export type GetKeywordsResponse = ApiResponse<{
 
 export type GetKeywordResponse = ApiResponse<KeywordDto>;
 
-export type GetKeywordScoresResponse = ApiResponse<KeywordScoreDto[]>;
+export type GetKeywordScoresResponse = ApiResponse<{scores: KeywordScoreDto[],total: number}>;
 
 // Global Responses
 export type GetGlobalScoresResponse = ApiResponse<GlobalScoreDto[]>;

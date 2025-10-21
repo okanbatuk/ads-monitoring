@@ -194,8 +194,9 @@ export const useAccountTree = (): UseAccountTreeReturn => {
   // Fetch ad groups for a campaign
   const fetchCampaignAdGroups = useCallback(async (campaignId: string): Promise<TreeNode[]> => {
     try {
-      const response = await fetchApi<{ data: { adGroups: AdGroupDto[] } }>(`/campaigns/${campaignId}/adgroups`);
-      const adGroups = response?.data?.adGroups || [];
+      const response = await fetchApi<{ data: { adGroups: AdGroupDto[],total:number } }>(`/campaigns/${campaignId}/adgroups`);
+      const data = response?.data;
+      const adGroups = data?.adGroups || [];
 
       return adGroups.map((adGroup: AdGroupDto) => ({
         id: `adgroup-${adGroup.id}`,
@@ -205,7 +206,7 @@ export const useAccountTree = (): UseAccountTreeReturn => {
         parentId: `campaign-${campaignId}`,
         path: `/campaigns/${campaignId}/adgroups/${adGroup.id}`,
         hasChildren: false,
-        isExpanded: false
+        isExpanded: false,
       }));
     } catch (error) {
       console.error('Error fetching ad groups:', error);

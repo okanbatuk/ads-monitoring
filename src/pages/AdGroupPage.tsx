@@ -3,6 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAdGroup, useAdGroupScores, useAdGroupKeywords } from '../services/api';
 import KeywordSparkline from '../components/KeywordSparkline';
 import { KeywordDto } from '@/types/api.types';
+import { format, parse, startOfWeek, addDays, subDays, isWithinInterval } from 'date-fns';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 // Skeleton Loader Component
 const SkeletonLoader = ({ className = '', count = 1 }: { className?: string; count?: number }) => (
@@ -64,7 +66,7 @@ const AdGroupPage: React.FC = () => {
   const { adGroupId } = useParams<{ adGroupId: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'keywords'>('overview');
-  const [timeRange, setTimeRange] = useState(30);
+  const [timeRange, setTimeRange] = useState(7); // Default to 7 days
   const {
     data: adGroupResponse,
     isLoading: isLoadingAdGroup,
@@ -116,7 +118,61 @@ const AdGroupPage: React.FC = () => {
   }, [keywordsData]);
 
   const adGroup = adGroupResponse?.data;
-  const scores = scoresData?.data?.scores || [];
+  
+  // Process scores data to include all dates in the time range
+  const scores = useMemo(() => {
+    const now = new Date();
+    const startDate = subDays(now, timeRange - 1);
+    
+    // Create a map of date strings to scores for easy lookup
+    const scoreMap = new Map<string, number>();
+    scoresData?.data?.scores?.forEach(score => {
+      scoreMap.set(score.date, score.qs);
+    });
+    
+    // Generate array of all dates in the time range
+    const dateArray = [];
+    for (let i = 0; i < timeRange; i++) {
+      dateArray.push(addDays(startDate, i));
+    }
+    
+    // For time ranges > 30 days, group by week
+    if (timeRange > 30) {
+      const weekGroups = new Map<string, { sum: number; count: number }>();
+      
+      dateArray.forEach(date => {
+        const weekStart = format(startOfWeek(date), 'yyyy-MM-dd');
+        const dateStr = format(date, 'yyyy-MM-dd');
+        const score = scoreMap.get(dateStr) || 0;
+        
+        if (!weekGroups.has(weekStart)) {
+          weekGroups.set(weekStart, { sum: 0, count: 0 });
+        }
+        
+        const group = weekGroups.get(weekStart)!;
+        group.sum += score;
+        group.count++;
+      });
+      
+      return Array.from(weekGroups.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([weekStart, { sum, count }]) => ({
+          date: format(new Date(weekStart), 'MMM d'),
+          qs: count > 0 ? sum / count : 0 // Weekly average
+        }));
+    } else {
+      // For 7-30 days, show daily data
+      return dateArray.map(date => {
+        const dateStr = format(date, 'yyyy-MM-dd');
+        const displayDate = format(date, timeRange <= 14 ? 'MMM d' : 'd MMM');
+        return {
+          date: displayDate,
+          qs: scoreMap.get(dateStr) || 0
+        };
+      });
+    }
+  }, [scoresData, timeRange]);
+  
   const keywords = keywordsData?.data?.keywords || [];
   const totalKeywords = keywordsData?.data?.total || 0;
 
@@ -256,38 +312,69 @@ const AdGroupPage: React.FC = () => {
 
         {activeTab === 'overview' ? (
           <div className="space-y-6">
-            {/* QS Gantt Chart */}
+            {/* QS Line Chart */}
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold mb-4">Quality Score Trend</h2>
-              <div className="h-12 flex items-center">
+              <div className="h-64">
                 {scores.length > 0 ? (
-                  <div className="w-full flex space-x-1">
-                    {scores.map((score) => (
-                      <div
-                        key={score.date}
-                        title={`${new Date(score.date).toLocaleDateString()}: QS ${score.qs.toFixed(1)}`}
-                        className="h-8 flex-1 group relative"
-                      >
-                        <div
-                          className="h-full w-full rounded-sm"
-                          style={{
-                            backgroundColor: getColorForScore(score.qs),
-                            opacity: 0.7,
-                            transition: 'opacity 0.2s',
-                          }}
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <span className="text-xs font-medium text-white bg-black bg-opacity-70 px-1 rounded">
-                            {score.qs.toFixed(1)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={scores}
+                      margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={{ stroke: '#e5e7eb' }}
+                        padding={{ left: 20, right: 20 }}
+                      />
+                      <YAxis 
+                        domain={[0, 10]} 
+                        tickCount={6}
+                        tick={{ fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={30}
+                      />
+                      <Tooltip 
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="bg-white p-2 border border-gray-200 rounded shadow-lg">
+                                <p className="font-medium">{payload[0].payload.date}</p>
+                                <p className="text-sm">
+                                  <span className="text-gray-600">Quality Score:</span>{' '}
+                                  <span className="font-semibold">{payload[0].value?.toFixed(1)}</span>
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="qs"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        dot={false}
+                        activeDot={{
+                          r: 6,
+                          fill: '#3b82f6',
+                          stroke: '#fff',
+                          strokeWidth: 2
+                        }}
+                      />
+                      <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" />
+                      <ReferenceLine y={4} stroke="#f59e0b" strokeDasharray="3 3" />
+                    </LineChart>
+                  </ResponsiveContainer>
                 ) : (
-                  <div className="text-gray-500 text-center w-full">
+                  <div className="h-full flex items-center justify-center text-gray-500">
                     {isLoadingScores ? (
-                      <SkeletonLoader className="h-6 w-48 mx-auto" />
+                      <SkeletonLoader className="h-6 w-48" />
                     ) : (
                       'No score data available'
                     )}
@@ -302,13 +389,17 @@ const AdGroupPage: React.FC = () => {
               {bottomKeywords.length > 0 ? (
                 <div className="space-y-3">
                   {bottomKeywords.map((keyword) => (
-                    <div key={keyword.id} className="flex items-center p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                      <div className="w-1/4 font-medium text-gray-900 truncate pr-4">
+                    <div 
+                      key={keyword.id} 
+                      className="flex items-center p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
+                      onClick={() => navigate(`/adgroups/${adGroupId}/keywords/${keyword.id}`)}
+                    >
+                      <div className="w-1/4 font-medium text-blue-600 hover:text-blue-800 truncate pr-4">
                         {keyword.keyword}
                       </div>
                       <div className="flex-1 flex items-center gap-4">
                         <div className="flex-1 max-w-3xl h-10">
-                          <KeywordSparkline width={650} scores={keyword.scores || []} />
+                          <KeywordSparkline width={650} scores={keyword.scores || []} timeRange={timeRange} />
                         </div>
                         <div className="w-16 flex-shrink-0 text-right">
                           <span 
@@ -339,7 +430,7 @@ const AdGroupPage: React.FC = () => {
         ) : (
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Keywords</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Keywords</h2>
               <p className="mt-1 text-sm text-gray-500">
                 {isLoadingKeywords ? 'Loading...' : `${keywordsData?.data?.keywords?.length || 0} keywords found`}
               </p>
@@ -393,7 +484,7 @@ const AdGroupPage: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 w-2/5 whitespace-nowrap">
                             <div className="w-full min-w-[200px]">
-                              <KeywordSparkline scores={scores} />
+                              <KeywordSparkline scores={scores} timeRange={timeRange} />
                             </div>
                           </td>
                           <td className="px-6 py-4 w-1/6 whitespace-nowrap">
