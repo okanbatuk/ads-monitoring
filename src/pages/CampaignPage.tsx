@@ -107,27 +107,27 @@ const CampaignPage = () => {
         // Generate data points for the selected time range
         const now = new Date();
         const startDate = subDays(now, timeRange - 1);
-        
+
         // For time ranges > 30 days, group by week
         if (timeRange > 30) {
           const weekGroups = new Map<string, { sum: number; count: number }>();
-          
+
           // Process each day in the time range
           for (let i = 0; i < timeRange; i++) {
             const currentDate = addDays(startDate, i);
             const weekStart = format(startOfWeek(currentDate), 'yyyy-MM-dd');
             const dateStr = format(currentDate, 'yyyy-MM-dd');
             const score = scoreMap.get(dateStr) || 0;
-            
+
             if (!weekGroups.has(weekStart)) {
               weekGroups.set(weekStart, { sum: 0, count: 0 });
             }
-            
+
             const group = weekGroups.get(weekStart)!;
             group.sum += score;
             group.count++;
           }
-          
+
           // Convert week groups to chart data
           const weeklyData = Array.from(weekGroups.entries())
             .sort(([a], [b]) => a.localeCompare(b))
@@ -135,7 +135,7 @@ const CampaignPage = () => {
               date: format(new Date(weekStart), 'MMM d'),
               qs: count > 0 ? sum / count : 0 // Weekly average
             }));
-            
+
           return {
             ...adGroup,
             score: adGroup.scores?.[0]?.qs || 0,
@@ -148,13 +148,13 @@ const CampaignPage = () => {
             const currentDate = addDays(startDate, i);
             const dateStr = format(currentDate, 'yyyy-MM-dd');
             const displayDate = format(currentDate, timeRange <= 14 ? 'MMM d' : 'd MMM');
-            
+
             dailyData.push({
               date: displayDate,
               qs: scoreMap.get(dateStr) || 0
             });
           }
-          
+
           return {
             ...adGroup,
             score: adGroup.scores?.[0]?.qs || 0,
@@ -203,12 +203,12 @@ const CampaignPage = () => {
     }
 
     // Create a map of dates to scores for easy lookup
-    const scoreMap = new Map<string, number>();
+    const scoreMap = new Map<string, {qs:number, adGroupCount: number}>();
     scoresData.forEach(score => {
       // const dateStr = format(new Date(score.date), 'yyyy-MM-dd');
       const date = parse(score.date, 'dd.MM.yyyy', new Date());
       const dateStr = format(date, 'yyyy-MM-dd');
-      scoreMap.set(dateStr, score.qs || 0);
+      scoreMap.set(dateStr, {qs: score.qs || 0, adGroupCount: score.adGroupCount || 0});
     });
 
     // Generate data points for the selected time range
@@ -221,13 +221,12 @@ const CampaignPage = () => {
 
     // For time ranges > 30 days, group by week for better readability
     if (timeRange > 30) {
-      const weekGroups = new Map<string, {sum: number, count: number}>();
-      
+      const weekGroups = new Map<string, { sum: number, count: number }>();
+
       dateArray.forEach(date => {
         const weekStart = format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
         const dateStr = format(date, 'yyyy-MM-dd');
-        const score = scoreMap.get(dateStr) || 0;
-        
+        const score = (scoreMap.get(dateStr) || {qs:0, adGroupCount:0}).qs;
         if (!weekGroups.has(weekStart)) {
           weekGroups.set(weekStart, { sum: 0, count: 0 });
         }
@@ -235,13 +234,14 @@ const CampaignPage = () => {
         week.sum += score;
         week.count++;
       });
-      
+
       // Convert week groups to chart data points
       return Array.from(weekGroups.entries())
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([weekStart, { sum, count }]) => ({
           date: format(new Date(weekStart), 'MMM d'),
-          qs: count > 0 ? sum / count : 0 // Weekly average
+          qs: count > 0 ? sum / count : 0, // Weekly average
+          adGroupCount: count
         }));
     } else {
       // For 7-30 days, show daily data
@@ -250,7 +250,8 @@ const CampaignPage = () => {
         const displayDate = format(date, timeRange <= 14 ? 'MMM d' : 'd MMM');
         return {
           date: displayDate,
-          qs: scoreMap.get(dateStr) || 0
+          qs: (scoreMap.get(dateStr) || {qs:0, adGroupCount:0}).qs,
+          adGroupCount: (scoreMap.get(dateStr) || {qs:0, adGroupCount:0}).adGroupCount
         };
       });
     }
@@ -309,11 +310,10 @@ const CampaignPage = () => {
           <nav className="-mb-px flex space-x-8">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'overview'
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               Overview
             </button>
@@ -322,11 +322,10 @@ const CampaignPage = () => {
                 setActiveTab('adgroups');
                 refetchAdGroups();
               }}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'adgroups'
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'adgroups'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               Ad Groups ({adGroupCount})
             </button>
@@ -341,13 +340,11 @@ const CampaignPage = () => {
                 key={days}
                 type="button"
                 onClick={() => setTimeRange(days)}
-                className={`px-4 py-2 text-sm font-medium ${
-                  timeRange === days
+                className={`px-4 py-2 text-sm font-medium ${timeRange === days
                     ? 'bg-blue-600 text-white'
                     : 'bg-white text-gray-700 hover:bg-gray-50'
-                } ${days === 7 ? 'rounded-l-md' : ''} ${
-                  days === 365 ? 'rounded-r-md' : ''
-                } border border-gray-300`}
+                  } ${days === 7 ? 'rounded-l-md' : ''} ${days === 365 ? 'rounded-r-md' : ''
+                  } border border-gray-300`}
               >
                 {days}d
               </button>
@@ -383,14 +380,14 @@ const CampaignPage = () => {
                       margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                      <XAxis 
-                        dataKey="date" 
+                      <XAxis
+                        dataKey="date"
                         tick={{ fontSize: 12 }}
                         tickLine={false}
                         axisLine={{ stroke: '#e5e7eb' }}
                         padding={{ left: 20, right: 20 }}
                       />
-                      <YAxis 
+                      <YAxis
                         domain={[0, 10]}
                         tickCount={6}
                         tick={{ fontSize: 12 }}
@@ -398,16 +395,33 @@ const CampaignPage = () => {
                         axisLine={false}
                         width={30}
                       />
-                      <Tooltip 
+                      <Tooltip
                         content={({ active, payload }) => {
                           if (active && payload && payload.length) {
+                            const qsValue = Number(payload[0].value);
+                            const displayQs = qsValue.toFixed(1);
                             return (
-                              <div className="bg-white p-2 border border-gray-200 rounded shadow-lg">
-                                <p className="font-medium">{payload[0].payload.date}</p>
-                                <p className="text-sm">
-                                  <span className="text-gray-600">Quality Score:</span>{' '}
-                                  <span className="font-semibold">{payload[0].value?.toFixed(1)}</span>
-                                </p>
+                              <div
+                                className="space-y-1.5 p-3 rounded-lg bg-gray/65 backdrop-blur-sm border border-gray-100 shadow-sm"
+                                style={{
+                                  boxShadow: '0 4px 20px -5px rgba(0, 0, 0, 0.05)'
+                                }}
+                              >
+                                <div className="flex items-center justify-between space-x-4">
+                                  <span className="text-gray-600 text-xs">Quality Score:</span>{' '}
+                                  <span className={`font-medium ${
+                                    qsValue >= 8 ? 'text-green-600' : 
+                                    qsValue >= 5 ? 'text-yellow-600' : 'text-red-600'
+                                  }`}>
+                                    {displayQs}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between space-x-4">
+                                  <span className="text-gray-600 text-xs">Ad Groups:</span>{' '}
+                                  <span className="font-medium text-gray-900">
+                                    {payload[0].payload.adGroupCount}
+                                  </span>
+                                </div>
                               </div>
                             );
                           }
@@ -462,11 +476,11 @@ const CampaignPage = () => {
                       {bottomAdGroups.map((adGroup) => {
                         const latestScore = adGroup.score;
                         const sparklineData = adGroup.sparklineData || [];
-                        
+
                         // Calculate trend from sparkline data (first vs last non-zero value)
                         const nonZeroScores = sparklineData.filter(d => d.qs > 0);
                         let trendPercentage = 0;
-                        
+
                         if (nonZeroScores.length >= 2) {
                           const firstScore = nonZeroScores[0].qs;
                           const lastScore = nonZeroScores[nonZeroScores.length - 1].qs;
@@ -474,7 +488,7 @@ const CampaignPage = () => {
                         }
 
                         return (
-                          <tr 
+                          <tr
                             key={adGroup.id}
                             className="hover:bg-gray-50 cursor-pointer"
                             onClick={() => navigate(`/campaigns/${campaignId}/adgroups/${adGroup.id}`)}
@@ -496,9 +510,9 @@ const CampaignPage = () => {
                                   <div className="w-full h-10">
                                     <ResponsiveContainer width="100%" height="100%">
                                       <LineChart data={sparklineData}>
-                                        <Line 
-                                          type="monotone" 
-                                          dataKey="qs" 
+                                        <Line
+                                          type="monotone"
+                                          dataKey="qs"
                                           stroke="#3b82f6"
                                           strokeWidth={2}
                                           dot={false}
@@ -509,15 +523,15 @@ const CampaignPage = () => {
                                             strokeWidth: 2
                                           }}
                                         />
-                                        <XAxis 
-                                          dataKey="date" 
-                                          hide 
+                                        <XAxis
+                                          dataKey="date"
+                                          hide
                                         />
-                                        <YAxis 
-                                          hide 
+                                        <YAxis
+                                          hide
                                           domain={[0, 10]}
                                         />
-                                        <Tooltip 
+                                        <Tooltip
                                           contentStyle={{ fontSize: '12px' }}
                                           formatter={(value: number) => [`${value.toFixed(1)}`, 'QS']}
                                           labelFormatter={(label) => `Date: ${label}`}
@@ -534,14 +548,13 @@ const CampaignPage = () => {
                             </td>
                             <td className="px-6 py-4 w-1/6">
                               <div className="flex items-center">
-                                <span 
-                                  className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                    latestScore >= 7 
-                                      ? 'bg-green-100 text-green-800' 
-                                      : latestScore >= 4 
-                                        ? 'bg-yellow-100 text-yellow-800' 
+                                <span
+                                  className={`px-3 py-1 rounded-full text-sm font-medium ${latestScore >= 7
+                                      ? 'bg-green-100 text-green-800'
+                                      : latestScore >= 4
+                                        ? 'bg-yellow-100 text-yellow-800'
                                         : 'bg-red-100 text-red-800'
-                                  }`}
+                                    }`}
                                 >
                                   {latestScore.toFixed(1)}
                                 </span>
@@ -626,8 +639,8 @@ const CampaignPage = () => {
                           </td>
                           <td className="px-6 py-4 w-2/5 whitespace-nowrap">
                             <div className="w-full min-w-[200px] h-10">
-                              <AdGroupSparkline 
-                                scores={scores} 
+                              <AdGroupSparkline
+                                scores={scores}
                                 width="100%"
                                 height={40}
                                 timeRange={timeRange}
@@ -636,22 +649,20 @@ const CampaignPage = () => {
                           </td>
                           <td className="px-6 py-4 w-1/6 whitespace-nowrap">
                             <div className="flex items-center">
-                              <span 
-                                className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                  latestScore >= 7 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : latestScore >= 4 
-                                      ? 'bg-yellow-100 text-yellow-800' 
+                              <span
+                                className={`px-3 py-1 rounded-full text-sm font-medium ${latestScore >= 7
+                                    ? 'bg-green-100 text-green-800'
+                                    : latestScore >= 4
+                                      ? 'bg-yellow-100 text-yellow-800'
                                       : 'bg-red-100 text-red-800'
-                                }`}
+                                  }`}
                               >
                                 {latestScore.toFixed(1)}/10
                               </span>
                               {!isNaN(trendPercentage) && trendPercentage !== 0 && (
-                                <span 
-                                  className={`ml-3 inline-flex items-center text-sm font-medium ${
-                                    trend > 0 ? 'text-green-600' : 'text-red-600'
-                                  }`}
+                                <span
+                                  className={`ml-3 inline-flex items-center text-sm font-medium ${trend > 0 ? 'text-green-600' : 'text-red-600'
+                                    }`}
                                 >
                                   {trend > 0 ? (
                                     <FiArrowUpRight className="mr-1" />

@@ -5,6 +5,7 @@ import type {
   GetAccountResponse,
   GetAccountCampaignsResponse,
   AccountDto,
+  GetMccAccountScoresResponse,
   GetAccountScoresResponse,
   PostAccountBulkScoresRequest,
   PostAccountBulkScoresResponse,
@@ -93,6 +94,41 @@ export const useMccAccounts = () => {
         console.groupEnd();
       }
     },
+    retry: 3,
+    retryDelay: 1000,
+  });
+};
+
+// Account endpoints
+export const useMccAccountScores = (accountId: string, days: number) => {
+  return useQuery<GetMccAccountScoresResponse>({
+    queryKey: ["accounts", accountId, "scores", days],
+    queryFn: async () => {
+      try {
+        const url = `${API_BASE_URL}/global/${accountId}?days=${days}`;
+        const response = await fetch(url, {
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(
+            `HTTP error! status: ${response.status}, ${errorText}`,
+          );
+        }
+
+        return await response.json();
+      } catch (error) {
+        console.error(
+          `[useAccountScores] Error fetching scores for account ${accountId}:`,
+          error,
+        );
+        throw error;
+      } finally {
+        console.groupEnd();
+      }
+    },
+    enabled: !!accountId && !!days,
     retry: 3,
     retryDelay: 1000,
   });

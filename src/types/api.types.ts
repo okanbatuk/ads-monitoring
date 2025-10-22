@@ -8,6 +8,15 @@ export interface ApiResponse<T = unknown> {
   timestamp?: string;
 }
 
+// MCC Account Score Types
+export interface MccAccountScoreDto {
+  id: number;
+  mccId: number;
+  date: string;
+  qs: number;
+  accountCount: number;
+}
+
 // ====================
 // Account Types
 // ====================
@@ -116,6 +125,10 @@ export type GetAccountsResponse = ApiResponse<{
 }>;
 
 export type GetAccountResponse = ApiResponse<AccountDto>;
+export type GetMccAccountScoresResponse = ApiResponse<{
+  scores: MccAccountScoreDto[], total: number
+}>;
+
 export type GetAccountScoresResponse = ApiResponse<{
   scores: AccountScoreDto[], total: number
 }>;

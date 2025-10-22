@@ -94,11 +94,7 @@ export const CampaignSparkline: React.FC<CampaignSparklineProps> = ({
     // For time ranges <= 30 days, show daily data
     const processedData = dateArray.map(date => {
       const dateStr = format(date, 'yyyy-MM-dd');
-      const displayDate = timeRange <= 7
-        ? format(date, 'EEE')
-        : timeRange <= 14
-          ? format(date, 'dd MMM')
-          : format(date, 'MMM d');
+      const displayDate = format(date, 'MMM d');
 
       return {
         date: displayDate,
@@ -171,6 +167,9 @@ export const CampaignSparkline: React.FC<CampaignSparklineProps> = ({
                         boxShadow: '0 4px 20px -5px rgba(0, 0, 0, 0.05)'
                       }}
                     >
+                      <div className='flex items-center justify-between space-x-4'>
+                        <span className='text-gray-500 text-xs'>{payload[0].payload.date}</span>
+                      </div>
                       <div className="flex items-center justify-between space-x-4">
                         <span className="text-gray-500 text-xs">Quality Score</span>
                         <span className={`font-medium ${
