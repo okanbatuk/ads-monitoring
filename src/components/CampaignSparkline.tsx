@@ -18,17 +18,17 @@ export const CampaignSparkline: React.FC<CampaignSparklineProps> = ({
   timeRange = 7,
 }) => {
   // Process data based on timeRange
-  const { data } = useMemo<{ data: { date: string; qs: number }[] }>(() => {
+  const { data } = useMemo<{ data: { date: string; qs: number, adGroupCount: number }[] }>(() => {
     const now = new Date();
     const startDate = subDays(now, timeRange - 1);
 
     // Create a map of date strings to scores for easy lookup
-    const scoreMap = new Map<string, number>();
+    const scoreMap = new Map<string, {qs:number, adGroupCount:number}>();
     scores.forEach(score => {
       try {
         const date = parse(score.date, 'dd.MM.yyyy', new Date());
         if (isValid(date)) {
-          scoreMap.set(format(date, 'yyyy-MM-dd'), score.qs);
+          scoreMap.set(format(date, 'yyyy-MM-dd'), {qs: score.qs, adGroupCount: score.adGroupCount});
         }
       } catch (e) {
         console.warn('Invalid date in sparkline data:', score.date);
@@ -43,22 +43,24 @@ export const CampaignSparkline: React.FC<CampaignSparklineProps> = ({
 
     // For time ranges > 30 days, group by week
     if (timeRange > 30) {
-      const weeklyData: { date: Date; qs: number; count: number }[] = [];
+      const weeklyData: { date: Date; qs: number; count: number; adGroupCount:number; }[] = [];
 
       dateArray.forEach(date => {
         const weekStart = startOfWeek(date, { weekStartsOn: 1 });
         const existingWeek = weeklyData.find(w => isSameWeek(w.date, weekStart, { weekStartsOn: 1 }));
 
         const dateStr = format(date, 'yyyy-MM-dd');
-        const qs = scoreMap.get(dateStr) || 0;
+        const data = scoreMap.get(dateStr) || {qs:0, adGroupCount:0};
 
         if (existingWeek) {
-          existingWeek.qs += qs;
+          existingWeek.qs += data.qs;
           existingWeek.count++;
+          existingWeek.adGroupCount = data.adGroupCount;
         } else {
           weeklyData.push({
             date: weekStart,
-            qs,
+            qs: data.qs,
+            adGroupCount: data.adGroupCount,
             count: 1
           });
         }
@@ -67,7 +69,8 @@ export const CampaignSparkline: React.FC<CampaignSparklineProps> = ({
       // Process weekly data
       const processedData = weeklyData.map(week => ({
         date: format(week.date, 'MMM d'),
-        qs: week.count > 0 ? week.qs / week.count : 0
+        qs: week.count > 0 ? week.qs / week.count : 0,
+        adGroupCount: week.adGroupCount
       }));
 
       // Calculate average and trend
@@ -99,7 +102,8 @@ export const CampaignSparkline: React.FC<CampaignSparklineProps> = ({
 
       return {
         date: displayDate,
-        qs: scoreMap.get(dateStr) || 0
+        qs: (scoreMap.get(dateStr) || {qs:0, adGroupCount:0}).qs,
+        adGroupCount: (scoreMap.get(dateStr) || {qs:0, adGroupCount:0}).adGroupCount
       };
     });
 
@@ -156,9 +160,43 @@ export const CampaignSparkline: React.FC<CampaignSparklineProps> = ({
               domain={[0, 10]}
             />
             <Tooltip
-              contentStyle={{ fontSize: '12px' }}
-              formatter={(value: number) => [`${value.toFixed(2)}`, 'QS']}
-              labelFormatter={(label) => `Date: ${label}`}
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  const qsValue = Number(payload[0].value);
+                  const displayQs = qsValue.toFixed(1);
+                  return (
+                    <div 
+                      className="space-y-1.5 p-3 rounded-lg bg-gray-50/95 backdrop-blur-sm border border-gray-100 shadow-sm"
+                      style={{
+                        boxShadow: '0 4px 20px -5px rgba(0, 0, 0, 0.05)'
+                      }}
+                    >
+                      <div className="flex items-center justify-between space-x-4">
+                        <span className="text-gray-500 text-xs">Quality Score</span>
+                        <span className={`font-medium ${
+                          qsValue >= 8 ? 'text-green-600' : 
+                          qsValue >= 5 ? 'text-yellow-600' : 'text-red-600'
+                        }`}>
+                          {displayQs}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between space-x-4">
+                        <span className="text-gray-500 text-xs">Ad Groups</span>
+                        <span className="font-medium text-gray-900">
+                          {payload[0].payload.adGroupCount}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              }}
+              contentStyle={{
+                background: 'transparent',
+                border: 'none',
+                boxShadow: 'none',
+                padding: 0
+              }}
             />
           </LineChart>
         </ResponsiveContainer>

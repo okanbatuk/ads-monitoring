@@ -15,6 +15,7 @@ import type {
 interface ChartDataPoint {
   date: string;
   qs: number;
+  campaignCount: number;
 }
 import {
   LineChart,
@@ -101,16 +102,15 @@ const MccSubAccountPage: React.FC = () => {
   }, [accountResponse]);
 
   // Process and format scores data for the chart
-  const { scores, scoreMap } = useMemo<{ scores: ChartDataPoint[]; scoreMap: Map<string, number> }>(() => {
-    const defaultReturn = { scores: [], scoreMap: new Map<string, number>() };
+  const { scores, scoreMap } = useMemo<{ scores: ChartDataPoint[]; scoreMap: Map<string, {qs:number, campaignCount:number}> }>(() => {
+    const defaultReturn = { scores: [], scoreMap: new Map<string, {qs:number, campaignCount:number}>() };
 
     if (!scoresResponse?.data?.scores?.length) {
       return defaultReturn;
     }
 
     const rawScores = scoresResponse.data.scores as AccountScoreDto[];
-    const adGroupCount = scoresResponse.data.total;
-    const scoreMap = new Map<string, number>();
+    const scoreMap = new Map<string, {qs:number, campaignCount:number}>();
 
     // First pass: create a map of dates to scores
     rawScores.forEach(score => {
@@ -121,7 +121,7 @@ const MccSubAccountPage: React.FC = () => {
         if (!isNaN(date.getTime())) {
           // Use a consistent format for the map key (YYYY-MM-DD)
           const dateKey = format(date, 'yyyy-MM-dd');
-          scoreMap.set(dateKey, parseFloat(score.qs.toFixed(2)));
+          scoreMap.set(dateKey, {qs: parseFloat(score.qs.toFixed(2)), campaignCount: score.campaignCount});
         } else {
           console.warn('Invalid date in scores data:', score.date);
         }
@@ -149,14 +149,14 @@ const MccSubAccountPage: React.FC = () => {
         const currentDate = addDays(startDate, i);
         const weekStart = format(startOfWeek(currentDate), 'yyyy-MM-dd');
         const dateStr = format(currentDate, 'yyyy-MM-dd');
-        const score = scoreMap.get(dateStr) || 0;
+        const data = scoreMap.get(dateStr) || {qs:0, campaignCount:0};
 
         if (!weekGroups.has(weekStart)) {
           weekGroups.set(weekStart, { sum: 0, count: 0 });
         }
 
         const group = weekGroups.get(weekStart)!;
-        group.sum += score;
+        group.sum += data.qs;
         group.count++;
       }
 
@@ -166,7 +166,8 @@ const MccSubAccountPage: React.FC = () => {
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([weekStart, { sum, count }]) => ({
             date: format(new Date(weekStart), 'MMM d'),
-            qs: count > 0 ? sum / count : 0 // Weekly average
+            qs: count > 0 ? sum / count : 0, // Weekly average
+            campaignCount: count
           }))
       );
     } else {
@@ -178,7 +179,8 @@ const MccSubAccountPage: React.FC = () => {
 
         scores.push({
           date: displayDate,
-          qs: scoreMap.get(dateStr) || 0
+          qs: (scoreMap.get(dateStr) || {qs:0, campaignCount:0}).qs,
+          campaignCount: (scoreMap.get(dateStr) || {qs:0, campaignCount:0}).campaignCount 
         });
       }
     }
@@ -319,7 +321,7 @@ const MccSubAccountPage: React.FC = () => {
               {/* Quality Score Trend Section */}
               <div className="bg-white p-6 rounded-lg shadow mb-8">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4 sm:mb-0">Quality Score Trend</h3>
+                  <h3 className="text-lg font-semibold mb-4 sm:mb-0">Quality Score Trend</h3>
                   <div className="inline-flex rounded-md shadow-sm" role="group">
                     {TIME_RANGES.map((days, index) => (
                       <button
@@ -341,7 +343,7 @@ const MccSubAccountPage: React.FC = () => {
                   {scores.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={scores}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0"/>
                         <XAxis
                           dataKey="date"
                           tick={{ fontSize: 12 }}
@@ -358,26 +360,32 @@ const MccSubAccountPage: React.FC = () => {
                           width={30}
                         />
                         <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'white',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '0.375rem',
-                            padding: '0.5rem',
-                            fontSize: '0.875rem'
-                          }}
                           content={({ active, payload }) => {
                             if (active && payload && payload.length) {
+                              const qsValue = Number(payload[0].value);
+                              const displayQs = qsValue.toFixed(1);
                               return (
-                                <div className="bg-white p-2 border border-gray-200 rounded shadow-lg">
-                                  <p className="font-medium">{payload[0].payload.date}</p>
-                                  <p className="text-sm">
-                                    <span className="text-gray-600">QS:</span>{' '}
-                                    <span className="font-semibold">{payload[0].value}</span>
-                                  </p>
-                                  {/* <p className="text-sm">
-                                    <span className="text-gray-600">AdGroup Count:</span>{' '}
-                                    <span className="font-semibold">{payload[0].payload.adGroupCount}</span>
-                                  </p> */}
+                                <div 
+                                  className="space-y-1.5 p-3 rounded-lg bg-gray/65 backdrop-blur-sm border border-gray-100 shadow-sm"
+                                  style={{
+                                    boxShadow: '0 4px 20px -5px rgba(0, 0, 0, 0.05)'
+                                  }}
+                                >
+                                  <div className="flex items-center justify-between space-x-4">
+                                    <span className="text-gray-500 text-xs">Quality Score</span>
+                                    <span className={`font-medium ${
+                                      qsValue >= 8 ? 'text-green-600' : 
+                                      qsValue >= 5 ? 'text-yellow-600' : 'text-red-600'
+                                    }`}>
+                                      {displayQs}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between space-x-4">
+                                    <span className="text-gray-500 text-xs">Campaigns</span>
+                                    <span className="font-medium text-gray-900">
+                                      {payload[0].payload.campaignCount}
+                                    </span>
+                                  </div>
                                 </div>
                               );
                             }
@@ -407,7 +415,7 @@ const MccSubAccountPage: React.FC = () => {
               {/* Campaigns Table */}
               <div className='bg-white p-6 rounded-lg shadow mb-8'>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium text-gray-900">Campaigns</h3>
+                  <h3 className="text-lg font-semibold">Campaigns</h3>
                 </div>
 
                 {isLoadingCampaigns ? (
