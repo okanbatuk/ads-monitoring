@@ -121,13 +121,18 @@ const AdGroupPage: React.FC = () => {
   
   // Process scores data to include all dates in the time range
   const scores = useMemo(() => {
+    if (!scoresData?.data?.scores) return [];
+    
     const now = new Date();
     const startDate = subDays(now, timeRange - 1);
     
     // Create a map of date strings to scores for easy lookup
     const scoreMap = new Map<string, number>();
-    scoresData?.data?.scores?.forEach(score => {
-      scoreMap.set(score.date, score.qs);
+    scoresData.data.scores.forEach(score => {
+      // Parse the date string from the API (format: 'dd.MM.yyyy')
+      const parsedDate = parse(score.date, 'dd.MM.yyyy', new Date());
+      const dateKey = format(parsedDate, 'yyyy-MM-dd');
+      scoreMap.set(dateKey, score.qs);
     });
     
     // Generate array of all dates in the time range
@@ -142,8 +147,8 @@ const AdGroupPage: React.FC = () => {
       
       dateArray.forEach(date => {
         const weekStart = format(startOfWeek(date), 'yyyy-MM-dd');
-        const dateStr = format(date, 'yyyy-MM-dd');
-        const score = scoreMap.get(dateStr) || 0;
+        const dateKey = format(date, 'yyyy-MM-dd');
+        const score = scoreMap.get(dateKey) || 0;
         
         if (!weekGroups.has(weekStart)) {
           weekGroups.set(weekStart, { sum: 0, count: 0 });
@@ -163,11 +168,11 @@ const AdGroupPage: React.FC = () => {
     } else {
       // For 7-30 days, show daily data
       return dateArray.map(date => {
-        const dateStr = format(date, 'yyyy-MM-dd');
+        const dateKey = format(date, 'yyyy-MM-dd');
         const displayDate = format(date, timeRange <= 14 ? 'MMM d' : 'd MMM');
         return {
           date: displayDate,
-          qs: scoreMap.get(dateStr) || 0
+          qs: scoreMap.get(dateKey) || 0
         };
       });
     }
@@ -263,7 +268,7 @@ const AdGroupPage: React.FC = () => {
 
           </div>
           <div className="text-sm text-gray-600">
-            <span>ID: {adGroup?.id}</span>
+            <span>Ad Group ID: {adGroup?.id}</span>
           </div>
         </div>
 
@@ -459,14 +464,18 @@ const AdGroupPage: React.FC = () => {
                         QS Trend
                       </th>
                       <th scope="col" className="px-6 py-3 w-1/6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Current QS
+                        Avg QS
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {keywordsData?.data?.keywords?.map((keyword: KeywordDto) => {
                       const scores = keyword.scores || [];
-                      const latestScore = scores.length > 0 ? scores[0] : null;
+                      // Calculate average QS from non-zero scores
+                      const nonZeroScores = scores.filter(s => s.qs > 0);
+                      const avgQs = nonZeroScores.length > 0 
+                        ? nonZeroScores.reduce((sum, s) => sum + s.qs, 0) / nonZeroScores.length 
+                        : 0;
 
                       return (
                         <tr
@@ -488,15 +497,16 @@ const AdGroupPage: React.FC = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4 w-1/6 whitespace-nowrap">
-                            {latestScore ? (
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${latestScore.qs >= 7 ? 'bg-green-100 text-green-800' :
-                                  latestScore.qs >= 4 ? 'bg-yellow-100 text-yellow-800' :
-                                    'bg-red-100 text-red-800'
-                                }`}>
-                                {latestScore.qs?.toFixed?.(1) || 'N/A'}
+                            {avgQs > 0 ? (
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                avgQs >= 7 ? 'bg-green-100 text-green-800' :
+                                avgQs >= 4 ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {avgQs.toFixed(1)}
                               </span>
                             ) : (
-                              <span className="text-gray-400 text-sm">N/A</span>
+                              <span className="text-gray-500 text-sm">N/A</span>
                             )}
                           </td>
                         </tr>

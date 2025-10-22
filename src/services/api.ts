@@ -184,7 +184,7 @@ export const useAccountCampaigns = (accountId: string) => {
     queryKey: ["accounts", accountId, "campaigns"],
     queryFn: async () => {
       try {
-        const url = `${API_BASE_URL}/accounts/${accountId}/campaigns`;
+        const url = `${API_BASE_URL}/accounts/${accountId}/campaigns?include=true`;
         const response = await fetch(url, {
           headers: { "Content-Type": "application/json" },
         });

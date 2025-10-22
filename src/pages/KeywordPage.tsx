@@ -277,7 +277,7 @@ const KeywordPage: React.FC = () => {
                     QS Trend
                   </th>
                   <th scope="col" className="px-6 py-3 w-1/6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Current QS
+                    Avg QS
                   </th>
                 </tr>
               </thead>
@@ -303,8 +303,26 @@ const KeywordPage: React.FC = () => {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 w-1/6 whitespace-nowrap text-sm text-gray-500">
-                      {kw.scores && kw.scores.length > 0 ? kw.scores[0].qs.toFixed(1) : '-'}
+                    <td className="px-6 py-4 w-1/6 whitespace-nowrap">
+                      {kw.scores && kw.scores.length > 0 ? (() => {
+                        // Calculate average QS from non-zero scores
+                        const nonZeroScores = kw.scores.filter((s: any) => s.qs > 0);
+                        const avgQs = nonZeroScores.length > 0 
+                          ? nonZeroScores.reduce((sum: number, s: any) => sum + s.qs, 0) / nonZeroScores.length
+                          : 0;
+                        
+                        return (
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            avgQs >= 7 ? 'bg-green-100 text-green-800' :
+                            avgQs >= 4 ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {avgQs.toFixed(1)}
+                          </span>
+                        );
+                      })() : (
+                        <span className="text-gray-500 text-sm">-</span>
+                      )}
                     </td>
                   </tr>
                 ))}

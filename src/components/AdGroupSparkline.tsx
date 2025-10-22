@@ -102,7 +102,7 @@ export const AdGroupSparkline: React.FC<AdGroupSparklineProps> = ({
 
   return (
     <div className="flex items-center justify-between w-full">
-      <div style={{ width: 'calc(100% - 80px)', height }} className="text-xs">
+      <div style={{ width, height }} className="text-xs">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
             <Line 
@@ -133,14 +133,6 @@ export const AdGroupSparkline: React.FC<AdGroupSparklineProps> = ({
             />
           </LineChart>
         </ResponsiveContainer>
-      </div>
-      <div className="flex items-center ml-2">
-        <span className="text-sm font-medium text-gray-700 mr-2">
-          {latestScore.toFixed(1)}
-        </span>
-        <span className={`text-xs font-medium ${trend >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-          {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}%
-        </span>
       </div>
     </div>
   );

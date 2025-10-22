@@ -454,7 +454,7 @@ const CampaignPage = () => {
                           QS Trend
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
-                          Current QS
+                          AVG QS
                         </th>
                       </tr>
                     </thead>
@@ -597,7 +597,7 @@ const CampaignPage = () => {
                         QS Trend
                       </th>
                       <th scope="col" className="px-6 py-3 w-1/6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Current QS
+                        Avg QS
                       </th>
                     </tr>
                   </thead>

@@ -83,15 +83,21 @@ export const KeywordSparkline: React.FC<KeywordSparklineProps> = ({
     }
   }, [scores, timeRange]);
 
-  // Calculate trend (simple difference between first and last non-zero score)
+  // Calculate trend (percentage change from previous day)
   const trend = useMemo(() => {
+    if (data.length < 2) return 0;
+    
+    // Get the two most recent non-zero data points
     const nonZeroData = data.filter(d => d.qs > 0);
     if (nonZeroData.length < 2) return 0;
     
-    const firstNonZero = nonZeroData[0];
-    const lastNonZero = nonZeroData[nonZeroData.length - 1];
+    // Get the two most recent data points
+    const [previous, current] = nonZeroData.slice(-2);
     
-    return ((lastNonZero.qs - firstNonZero.qs) / (firstNonZero.qs || 1)) * 100;
+    // Calculate percentage change: ((current - previous) / previous) * 10
+    const change = (current.qs - previous.qs) * 10;
+    
+    return Number(change.toFixed(2));
   }, [data]);
 
   return (
@@ -111,7 +117,6 @@ export const KeywordSparkline: React.FC<KeywordSparklineProps> = ({
             <Tooltip
               contentStyle={{ fontSize: '12px' }}
               formatter={(value: number) => [`${value.toFixed(1)}`, 'QS']}
-              // TODO: date is invalid !!
               labelFormatter={(label) => `Date: ${label}`}
             />
           </LineChart>
