@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAccount, useSubAccounts, useMccAccountScores } from '../services/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { format, parse, subDays, addDays, startOfWeek, isSameWeek, isValid, differenceInDays } from 'date-fns';
 import { AccountSparkline } from '../components/AccountSparkline';
+import ScrollToTop from '../components/ScrollToTop';
 
 // Time range options
 const TIME_RANGES = [7, 30, 90, 365];
@@ -31,15 +32,15 @@ export const MccAccountPage = () => {
   const { data: scoresResponse, isLoading: isLoadingScores } = useMccAccountScores(mccId || '', timeRange);
 
   // Process scores data
-  const { scores, scoreMap } = useMemo<{ scores: ScoreData[]; scoreMap: Map<string, {qs:number, accountCounts: number}> }>(() => {
-    const defaultReturn = { scores: [], scoreMap: new Map<string, {qs:number, accountCounts: number}>() };
-    
+  const { scores, scoreMap } = useMemo<{ scores: ScoreData[]; scoreMap: Map<string, { qs: number, accountCounts: number }> }>(() => {
+    const defaultReturn = { scores: [], scoreMap: new Map<string, { qs: number, accountCounts: number }>() };
+
     if (!scoresResponse?.data?.scores?.length) {
       return defaultReturn;
     }
 
     const rawScores = scoresResponse.data.scores;
-    const scoreMap = new Map<string, {qs:number, accountCounts: number}>();
+    const scoreMap = new Map<string, { qs: number, accountCounts: number }>();
     const now = new Date();
     const startDate = subDays(now, timeRange - 1);
     // First, map all scores by date for quick lookup
@@ -49,23 +50,23 @@ export const MccAccountPage = () => {
         try {
           const dateObj = parse(score.date, 'dd.MM.yyyy', new Date());
           const formattedDate = format(dateObj, 'yyyy-MM-dd');
-          scoreMap.set(formattedDate, {qs: score.qs, accountCounts: score.accountCount});
+          scoreMap.set(formattedDate, { qs: score.qs, accountCounts: score.accountCount });
         } catch (e) {
           console.warn('Failed to parse date:', score.date, e);
         }
       }
     });
-    
+
     // Generate data points for the selected time range
     const scores: ScoreData[] = [];
     for (let i = 0; i < timeRange; i++) {
       const currentDate = addDays(startDate, i);
       const dateStr = format(currentDate, 'yyyy-MM-dd');
       const displayDate = timeRange <= 14 ? format(currentDate, 'MMM d') : format(currentDate, 'd MMM');
-      
-      const qs = (scoreMap.get(dateStr) || {qs: 0, accountCounts: 0}).qs;
-      const accountCounts = (scoreMap.get(dateStr) || {qs: 0, accountCounts: 0}).accountCounts;
-      
+
+      const qs = (scoreMap.get(dateStr) || { qs: 0, accountCounts: 0 }).qs;
+      const accountCounts = (scoreMap.get(dateStr) || { qs: 0, accountCounts: 0 }).accountCounts;
+
       scores.push({
         date: displayDate,
         qs,
@@ -83,10 +84,10 @@ export const MccAccountPage = () => {
   const processedSubAccounts = useMemo(() => {
     const now = new Date();
     const startDate = subDays(now, timeRange - 1);
-    
+
     return subAccounts.map(account => {
       const scores = account.scores || [];
-      
+
       // Filter scores for the selected time range
       const filteredScores = scores.filter(score => {
         try {
@@ -97,17 +98,17 @@ export const MccAccountPage = () => {
           return false;
         }
       });
-      
+
       // Sort scores by date
-      const sortedScores = [...filteredScores].sort((a, b) => 
-        new Date(parse(a.date, 'dd.MM.yyyy', new Date())).getTime() - 
+      const sortedScores = [...filteredScores].sort((a, b) =>
+        new Date(parse(a.date, 'dd.MM.yyyy', new Date())).getTime() -
         new Date(parse(b.date, 'dd.MM.yyyy', new Date())).getTime()
       );
-      
-      const avgQs = sortedScores.length > 0 
-        ? sortedScores.reduce((sum, score) => sum + (score?.qs || 0), 0) / sortedScores.length 
+
+      const avgQs = sortedScores.length > 0
+        ? sortedScores.reduce((sum, score) => sum + (score?.qs || 0), 0) / sortedScores.length
         : 0;
-      
+
       // Calculate QS change if we have at least 2 scores
       let qsChange = 0;
       if (sortedScores.length >= 2) {
@@ -121,7 +122,7 @@ export const MccAccountPage = () => {
       for (let i = 0; i < timeRange; i++) {
         const currentDate = addDays(startDate, i);
         const dateStr = format(currentDate, 'dd.MM.yyyy');
-        
+
         // Find score for this date
         const scoreForDate = sortedScores.find(s => {
           try {
@@ -131,7 +132,7 @@ export const MccAccountPage = () => {
             return false;
           }
         });
-        
+
         sparklineData.push({
           date: dateStr,
           qs: scoreForDate?.qs || 0,
@@ -148,7 +149,7 @@ export const MccAccountPage = () => {
       };
     });
   }, [subAccounts, timeRange]);
-  
+
   if (isLoadingAccount || isLoadingScores || isLoadingSubAccounts) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -199,53 +200,57 @@ export const MccAccountPage = () => {
     .sort((a, b) => a.avgQs - b.avgQs)
     .slice(0, 5);
 
+  // Get the latest score or default to 0
+  const latestScore = scores?.[scores.length - 1]?.qs || 0;
+  const scoreColor = latestScore >= 7 ? 'text-green-600' : latestScore >= 4 ? 'text-yellow-600' : 'text-red-600';
+  const statusColor = account.status === 'ENABLED' ? 'bg-green-500' :
+    account.status === 'PAUSED' ? 'bg-yellow-500' : 'bg-red-500';
+  const statusTooltip = account.status === 'ENABLED' ? 'Account is active' :
+    account.status === 'PAUSED' ? 'Account is paused' : 'Account is removed';
+  const statusText = account.status === 'ENABLED' ? 'text-green-600' :
+    account.status === 'PAUSED' ? 'text-yellow-600' : 'text-red-600';
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {account.name}
-          </h1>
-          <p className="text-sm text-gray-500">
-            Account ID: {account.accountId}
-          </p>
-        </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {account.name}
+                </h1>
+                <div className="relative group">
+                  <span
+                    className={`inline-block w-2 h-2 rounded-full ${statusColor}`}
+                    style={{marginBottom: '0.25rem'}}
+                    title={statusTooltip}
+                  ></span>
+                  <div className={`cursor-pointer absolute z-10 hidden group-hover:block bg-gray-200 ${statusText} text-xs rounded px-3 py-2 -mt-8 -ml-2`}>
+                    {statusTooltip}
+                  </div>
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                Account ID: {account.accountId}
+              </p>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Quality Score Card */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <p className="text-sm font-medium text-gray-500">Quality Score</p>
-            <div className="flex items-baseline mt-1">
-              <span className={`text-3xl font-bold ${
-                scores?.[scores.length - 1]?.qs >= 7 ? 'text-green-600' : avgQs >= 4 ? 'text-yellow-600' : 'text-red-600'
-                }`}>
-                {scores?.[scores.length - 1]?.qs?.toFixed(1) || 'N/A'}
-              </span>
-              <span className="ml-2 text-sm text-gray-500">/ 10</span>
+            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+              <div className="flex items-center">
+                <span className="font-medium">Quality Score: </span>
+                <span className={`ml-1 font-semibold ${scoreColor}`}>
+                  {latestScore.toFixed(1)}/10
+                </span>
+              </div>
+              <div className="h-4 w-px bg-gray-300"></div>
+              <div>
+                <span className="font-medium">Sub Accounts: </span>
+                <span className="font-semibold">{subAccounts.length}</span>
+              </div>
             </div>
           </div>
 
-          {/* Status Card */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <p className="text-sm font-medium text-gray-500">Status</p>
-            <div className="flex items-center mt-1">
-              <span className={`inline-block w-2 h-2 rounded-full mr-2 ${account.status === 'ENABLED' ? 'bg-green-500' :
-                account.status === 'PAUSED' ? 'bg-yellow-500' : 'bg-red-500'
-                }`}></span>
-              <span className="text-lg font-medium text-gray-900 capitalize">
-                {account.status}
-              </span>
-            </div>
-          </div>
-
-          {/* Sub Accounts Card */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <p className="text-sm font-medium text-gray-500">Sub Accounts</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">
-              {subAccounts.length}
-            </p>
           </div>
         </div>
 
@@ -380,9 +385,9 @@ export const MccAccountPage = () => {
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap w-2/3">
                           <div className="h-10 w-full">
-                            <AccountSparkline 
-                              width={750} 
-                              scores={subAccount.scores || []} 
+                            <AccountSparkline
+                              width={750}
+                              scores={subAccount.scores || []}
                               timeRange={timeRange}
                             />
                           </div>
@@ -415,6 +420,7 @@ export const MccAccountPage = () => {
           )}
         </div>
       </div>
+      <ScrollToTop />
     </div>
   );
 };

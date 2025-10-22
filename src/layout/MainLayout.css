@@ -61,6 +61,10 @@ html, body, #root {
   transition: transform var(--transition-speed);
   z-index: 1000;
   overflow-y: auto;
+  display: none;
+}
+.sidebar-container.open{
+  display: block;
 }
 
 /* Main content area */
@@ -70,6 +74,14 @@ html, body, #root {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  transition: margin-left var(--transition-speed);
+  width: calc(100% - var(--sidebar-width));
+}
+
+/* When sidebar is closed */
+.main-content:not(.sidebar-open) {
+  margin-left: 0;
+  width: 100%;
 }
 
 /* Content area */
@@ -78,6 +90,7 @@ html, body, #root {
   padding: 1.5rem;
   overflow-y: auto;
   background-color: var(--bg-color);
+  width: 100%;
 }
 
 /* Responsive styles */
@@ -91,8 +104,8 @@ html, body, #root {
   }
 
   .main-content {
-    margin-left: 0;
-    width: 100%;
+    margin-left: 0 !important;
+    width: 100% !important;
   }
 
   .content {

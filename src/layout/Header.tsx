@@ -23,13 +23,13 @@ export default function Header({ isOpen, onToggleSidebar }: HeaderProps) {
         <h1 className="header-title">Ads Management Dashboard</h1>
       </div>
 
-      <button
+      {/* <button
         className="theme-toggle"
         onClick={toggleTheme}
         aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
       >
         {theme === 'dark' ? <FiSun size={20} /> : <FiMoon size={20} />}
-      </button>
+      </button> */}
     </header>
   );
 }

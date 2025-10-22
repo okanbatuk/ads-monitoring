@@ -6,6 +6,7 @@ import { format, parse, startOfWeek, addDays, subDays, isWithinInterval } from '
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts';
 import { FiArrowLeft } from 'react-icons/fi';
 import { KeywordDto, KeywordScoreDto } from '../types/api.types';
+import ScrollToTop from '@/components/ScrollToTop';
 
 // Types
 interface ChartDataPoint {
@@ -336,21 +337,7 @@ const KeywordPage: React.FC = () => {
         )}
       </div>
 
-      {/* Mini Metrics */}
-      {/*       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        {[
-          { name: 'Impressions', value: '0' },
-          { name: 'Clicks', value: '0' },
-          { name: 'CTR', value: '0%' },
-          { name: 'Conversions', value: '0' },
-        ].map((metric, i) => (
-          <div key={i} className="bg-white rounded-lg shadow p-6">
-            <p className="text-sm font-medium text-gray-500">{metric.name}</p>
-            <p className="mt-1 text-2xl font-semibold text-gray-900">{metric.value}</p>
-          </div>
-        ))}
-      </div> */}
-
+      <ScrollToTop />
     </div>
   );
 };

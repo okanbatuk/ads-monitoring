@@ -21,7 +21,7 @@ const DashboardLayout = ({ children }: { children?: ReactNode }) => {
 const MemoizedSidebar = memo(Sidebar);
 
 const MainLayout = ({ children }: MainLayoutProps) => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { theme } = useTheme();
 
   const toggleSidebar = useCallback(() => {
@@ -38,7 +38,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
         <MemoizedSidebar isOpen={sidebarOpen} onClose={closeSidebar} />
       </div>
       
-      <div className="main-content">
+      <div className={`main-content ${sidebarOpen ? 'sidebar-open' : ''}`}>
         <Header isOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
         <main className="content">
           <DashboardLayout>{children}</DashboardLayout>
