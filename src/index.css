@@ -256,6 +256,17 @@ textarea {
   animation: spin 1s linear infinite;
 }
 
+/* Remove focus outline on click for all interactive elements */
+button:focus,
+input:focus,
+select:focus,
+textarea:focus,
+[role="button"]:focus,
+[tabindex]:focus,
+a:focus {
+  outline: none;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

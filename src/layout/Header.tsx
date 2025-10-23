@@ -1,6 +1,7 @@
 import { FiMoon, FiSun, FiMenu } from 'react-icons/fi';
 import { useTheme } from '../contexts/ThemeProvider';
 import './Header.css';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface HeaderProps {
 
 export default function Header({ isOpen, onToggleSidebar }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
 
   return (
     <header className="header">
@@ -20,7 +22,10 @@ export default function Header({ isOpen, onToggleSidebar }: HeaderProps) {
         >
           <FiMenu size={24} />
         </button>
-        <h1 className="header-title">Ads Management Dashboard</h1>
+        <div style={{ cursor: 'pointer' }} onClick={() => navigate('/')}>
+
+          <h1 className="header-title">Ads Management Dashboard</h1>
+        </div>
       </div>
 
       {/* <button

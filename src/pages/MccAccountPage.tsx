@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAccount, useSubAccounts, useMccAccountScores } from '../services/api';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area, AreaChart } from 'recharts';
 import { format, parse, subDays, addDays, startOfWeek, isSameWeek, isValid, differenceInDays } from 'date-fns';
 import { AccountSparkline } from '../components/AccountSparkline';
 import ScrollToTop from '../components/ScrollToTop';
@@ -10,12 +10,7 @@ import ScrollToTop from '../components/ScrollToTop';
 const TIME_RANGES = [7, 30, 90, 365];
 
 interface ScoreData {
-  date: string;
-  qs: number;
-  accountCounts: number;
-}
-
-interface ScoreData {
+  axisDate: string;
   date: string;
   qs: number;
   accountCounts: number;
@@ -62,13 +57,14 @@ export const MccAccountPage = () => {
     for (let i = 0; i < timeRange; i++) {
       const currentDate = addDays(startDate, i);
       const dateStr = format(currentDate, 'yyyy-MM-dd');
-      const displayDate = timeRange <= 14 ? format(currentDate, 'MMM d') : format(currentDate, 'd MMM');
+      const displayDate = timeRange <= 364 ? format(currentDate, 'MMM d') : format(currentDate, 'MMM d, yyyy');
 
       const qs = (scoreMap.get(dateStr) || { qs: 0, accountCounts: 0 }).qs;
       const accountCounts = (scoreMap.get(dateStr) || { qs: 0, accountCounts: 0 }).accountCounts;
 
       scores.push({
-        date: displayDate,
+        axisDate:displayDate,
+        date: dateStr,
         qs,
         accountCounts
       });
@@ -117,35 +113,10 @@ export const MccAccountPage = () => {
         qsChange = firstQs !== 0 ? ((lastQs - firstQs) / firstQs) * 100 : 0;
       }
 
-      // Generate data points for all days in the time range
-      const sparklineData = [];
-      for (let i = 0; i < timeRange; i++) {
-        const currentDate = addDays(startDate, i);
-        const dateStr = format(currentDate, 'dd.MM.yyyy');
-
-        // Find score for this date
-        const scoreForDate = sortedScores.find(s => {
-          try {
-            const scoreDate = parse(s.date, 'dd.MM.yyyy', new Date());
-            return format(scoreDate, 'dd.MM.yyyy') === dateStr;
-          } catch (e) {
-            return false;
-          }
-        });
-
-        sparklineData.push({
-          date: dateStr,
-          qs: scoreForDate?.qs || 0,
-          // Add a flag to indicate if this is actual data or a placeholder
-          hasData: !!scoreForDate
-        });
-      }
-
       return {
         ...account,
         avgQs,
         qsChange,
-        sparklineData
       };
     });
   }, [subAccounts, timeRange]);
@@ -279,10 +250,10 @@ export const MccAccountPage = () => {
 
           <div style={{ height: '300px' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={scores}>
+              <AreaChart data={scores}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                 <XAxis
-                  dataKey="date"
+                  dataKey="axisDate"
                   tick={{ fontSize: 12 }}
                   tickLine={false}
                   axisLine={{ stroke: '#e5e7eb' }}
@@ -293,7 +264,7 @@ export const MccAccountPage = () => {
                   tickCount={6}
                   tick={{ fontSize: 12 }}
                   tickLine={false}
-                  axisLine={false}
+                  axisLine={{ stroke: '#e5e7eb' }}
                   width={30}
                 />
                 <Tooltip
@@ -303,14 +274,15 @@ export const MccAccountPage = () => {
                       const displayQs = qsValue.toFixed(1);
                       return (
                         <div
-                          className="space-y-1.5 p-3 rounded-lg bg-gray-50/95 backdrop-blur-sm border border-gray-100 shadow-sm"
+                          className="space-y-1.5 p-2 rounded-lg bg-gray-50/95 backdrop-blur-sm border border-gray-100 shadow-md"
                           style={{
-                            boxShadow: '0 4px 20px -5px rgba(0, 0, 0, 0.05)'
+                            boxShadow: '0 4px 20px -5px rgba(31, 78, 195, 0.05)'
                           }}
                         >
+                          <div><span className='font-semibold text-sm'>{format(payload[0].payload.date, 'MMM d, yyyy')}</span></div>
                           <div className="flex items-center justify-between space-x-4">
                             <span className="text-gray-500 text-xs">Quality Score</span>
-                            <span className={`font-medium ${qsValue >= 8 ? 'text-green-600' :
+                            <span className={`font-medium text-sm ${qsValue >= 8 ? 'text-green-600' :
                               qsValue >= 5 ? 'text-yellow-600' : 'text-red-600'
                               }`}>
                               {displayQs}
@@ -318,7 +290,7 @@ export const MccAccountPage = () => {
                           </div>
                           <div className="flex items-center justify-between space-x-4">
                             <span className="text-gray-600 text-xs">Accounts:</span>{' '}
-                            <span className="font-medium text-gray-900">
+                            <span className="font-medium text-sm text-gray-900">
                               {payload[0].payload.accountCounts}
                             </span>
                           </div>
@@ -334,17 +306,19 @@ export const MccAccountPage = () => {
                     padding: 0
                   }}
                 />
-                <Line
+                <Area
                   type="monotone"
                   dataKey="qs"
                   stroke="#3b82f6"
+                  fill="#93c5fd"
+                  fillOpacity={0.5}
                   strokeWidth={2}
                   dot={false}
                   activeDot={{ r: 6, stroke: '#2563eb', strokeWidth: 2 }}
                 />
                 <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" />
                 <ReferenceLine y={4} stroke="#ef4444" strokeDasharray="3 3" />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>

@@ -39,6 +39,31 @@ const getColorForScore = (score: number) => {
   return QS_COLORS['1-3'];
 };
 
+// Helper functions for status display
+const getStatusColor = (status?: string) => {
+  return {
+    'ENABLED': 'bg-green-500',
+    'PAUSED': 'bg-yellow-500',
+    'REMOVED': 'bg-red-500'
+  }[status || ''] || 'bg-gray-400';
+};
+
+const getStatusTextColor = (status?: string) => {
+  return {
+    'ENABLED': 'text-green-600',
+    'PAUSED': 'text-yellow-600',
+    'REMOVED': 'text-red-600'
+  }[status || ''] || 'text-gray-600';
+};
+
+const getStatusTooltip = (status?: string) => {
+  return {
+    'ENABLED': 'Ad group is active',
+    'PAUSED': 'Ad group is paused',
+    'REMOVED': 'Ad group is removed'
+  }[status || ''] || 'Unknown status';
+};
+
 // Badge component for status display
 type StatusType = 'ENABLED' | 'PAUSED' | 'REMOVED' | string;
 
@@ -47,18 +72,18 @@ interface StatusBadgeProps {
 }
 
 const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
-  const statusMap: Record<string, { bg: string; text: string }> = {
-    ENABLED: { bg: 'bg-green-100', text: 'text-green-800' },
-    PAUSED: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
-    REMOVED: { bg: 'bg-red-100', text: 'text-red-800' },
-  };
-
-  const statusStyle = statusMap[status] || { bg: 'bg-gray-100', text: 'text-gray-800' };
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}>
-      {status}
-    </span>
+    <div className="relative group">
+      <span
+        className={`inline-block w-2 h-2 rounded-full ${getStatusColor(status)}`}
+        style={{marginBottom: '0.25rem'}}
+        title={getStatusTooltip(status)}
+      ></span>
+      <div className={`cursor-pointer absolute z-10 hidden group-hover:block bg-gray-200 ${getStatusTextColor(status)} text-xs rounded px-3 py-2 -mt-8 -ml-2`}>
+        {getStatusTooltip(status)}
+      </div>
+    </div>
   );
 };
 
@@ -81,7 +106,7 @@ const AdGroupPage: React.FC = () => {
     error: scoresError
   } = useAdGroupScores(adGroupId!, timeRange);
 
-    // Fetch keywords when component mounts
+  // Fetch keywords when component mounts
   const {
     data: keywordsData,
     isLoading: isLoadingKeywords,
@@ -89,7 +114,7 @@ const AdGroupPage: React.FC = () => {
     error: keywordsError,
     refetch: refetchKeywords
   } = useAdGroupKeywords(adGroupId!, { enabled: true });
-  
+
   // Keep track of whether we've requested keywords for the tab
   const [keywordsTabLoaded, setKeywordsTabLoaded] = useState(false);
 
@@ -118,52 +143,53 @@ const AdGroupPage: React.FC = () => {
   }, [keywordsData]);
 
   const adGroup = adGroupResponse?.data;
-  
+
   // Process scores data to include all dates in the time range
   const scores = useMemo(() => {
     if (!scoresData?.data?.scores) return [];
-    
+
     const now = new Date();
     const startDate = subDays(now, timeRange - 1);
-    
+
     // Create a map of date strings to scores for easy lookup
-    const scoreMap = new Map<string, number>();
+    const scoreMap = new Map<string, {qs:number, keywordCount: number}>();
     scoresData.data.scores.forEach(score => {
       // Parse the date string from the API (format: 'dd.MM.yyyy')
       const parsedDate = parse(score.date, 'dd.MM.yyyy', new Date());
       const dateKey = format(parsedDate, 'yyyy-MM-dd');
-      scoreMap.set(dateKey, score.qs);
+      scoreMap.set(dateKey, {qs: score.qs, keywordCount: score.keywordCount});
     });
-    
+
     // Generate array of all dates in the time range
     const dateArray = [];
     for (let i = 0; i < timeRange; i++) {
       dateArray.push(addDays(startDate, i));
     }
-    
+
     // For time ranges > 30 days, group by week
     if (timeRange > 30) {
       const weekGroups = new Map<string, { sum: number; count: number }>();
-      
+
       dateArray.forEach(date => {
         const weekStart = format(startOfWeek(date), 'yyyy-MM-dd');
         const dateKey = format(date, 'yyyy-MM-dd');
-        const score = scoreMap.get(dateKey) || 0;
-        
+        const score = (scoreMap.get(dateKey) || {qs: 0, keywordCount: 0}).qs;
+
         if (!weekGroups.has(weekStart)) {
           weekGroups.set(weekStart, { sum: 0, count: 0 });
         }
-        
+
         const group = weekGroups.get(weekStart)!;
         group.sum += score;
         group.count++;
       });
-      
+
       return Array.from(weekGroups.entries())
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([weekStart, { sum, count }]) => ({
           date: format(new Date(weekStart), 'MMM d'),
-          qs: count > 0 ? sum / count : 0 // Weekly average
+          qs: count > 0 ? sum / count : 0, // Weekly average
+          keywordCount: count
         }));
     } else {
       // For 7-30 days, show daily data
@@ -172,12 +198,13 @@ const AdGroupPage: React.FC = () => {
         const displayDate = format(date, timeRange <= 14 ? 'MMM d' : 'd MMM');
         return {
           date: displayDate,
-          qs: scoreMap.get(dateKey) || 0
+          qs: (scoreMap.get(dateKey) || {qs: 0, keywordCount: 0}).qs,
+          keywordCount: (scoreMap.get(dateKey) || {qs: 0, keywordCount: 0}).keywordCount
         };
       });
     }
   }, [scoresData, timeRange]);
-  
+
   const keywords = keywordsData?.data?.keywords || [];
   const totalKeywords = keywordsData?.data?.total || 0;
 
@@ -260,15 +287,23 @@ const AdGroupPage: React.FC = () => {
             </ol>
           </nav> */}
 
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-gray-900">{adGroup?.name}</h1>
-              {adGroup?.status && <StatusBadge status={adGroup.status} />}
+          <div className="flex justify-between items-start">
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-gray-900">{adGroup?.name}</h1>
+                <div className="relative group">
+                  <span
+                    className={`inline-block w-2 h-2 rounded-full ${getStatusColor(adGroup?.status)}`}
+                    style={{marginBottom: '0.25rem'}}
+                    title={getStatusTooltip(adGroup?.status)}
+                  ></span>
+                  <div className={`cursor-pointer absolute z-10 hidden group-hover:block bg-gray-200 ${getStatusTextColor(adGroup?.status)} text-xs rounded px-3 py-2 -mt-8 -ml-2`}>
+                    {getStatusTooltip(adGroup?.status)}
+                  </div>
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 mt-1">Ad Group ID: {adGroup?.id}</p>
             </div>
-
-          </div>
-          <div className="text-sm text-gray-600">
-            <span>Ad Group ID: {adGroup?.id}</span>
           </div>
         </div>
 
@@ -328,31 +363,47 @@ const AdGroupPage: React.FC = () => {
                       margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                      <XAxis 
-                        dataKey="date" 
+                      <XAxis
+                        dataKey="date"
                         tick={{ fontSize: 12 }}
                         tickLine={false}
                         axisLine={{ stroke: '#e5e7eb' }}
                         padding={{ left: 20, right: 20 }}
                       />
-                      <YAxis 
-                        domain={[0, 10]} 
+                      <YAxis
+                        domain={[0, 10]}
                         tickCount={6}
                         tick={{ fontSize: 12 }}
                         tickLine={false}
                         axisLine={false}
                         width={30}
                       />
-                      <Tooltip 
+                      <Tooltip
                         content={({ active, payload }) => {
                           if (active && payload && payload.length) {
+                            const qsValue = Number(payload[0].value);
+                            const displayQs = qsValue.toFixed(1);
                             return (
-                              <div className="bg-white p-2 border border-gray-200 rounded shadow-lg">
-                                <p className="font-medium">{payload[0].payload.date}</p>
-                                <p className="text-sm">
-                                  <span className="text-gray-600">Quality Score:</span>{' '}
-                                  <span className="font-semibold">{payload[0].value?.toFixed(1)}</span>
-                                </p>
+                              <div
+                                className="space-y-1.5 p-3 rounded-lg bg-gray/65 backdrop-blur-sm border border-gray-100 shadow-sm"
+                                style={{
+                                  boxShadow: '0 4px 20px -5px rgba(0, 0, 0, 0.05)'
+                                }}
+                              >
+                                <div className="flex items-center justify-between space-x-4">
+                                  <span className="text-gray-600 text-xs">Quality Score:</span>{' '}
+                                  <span className={`font-medium ${qsValue >= 8 ? 'text-green-600' :
+                                      qsValue >= 5 ? 'text-yellow-600' : 'text-red-600'
+                                    }`}>
+                                    {displayQs}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between space-x-4">
+                                  <span className="text-gray-600 text-xs">Keywords:</span>{' '}
+                                  <span className="font-medium text-gray-900">
+                                    {payload[0].payload.keywordCount}
+                                  </span>
+                                </div>
                               </div>
                             );
                           }
@@ -394,8 +445,8 @@ const AdGroupPage: React.FC = () => {
               {bottomKeywords.length > 0 ? (
                 <div className="space-y-3">
                   {bottomKeywords.map((keyword) => (
-                    <div 
-                      key={keyword.id} 
+                    <div
+                      key={keyword.id}
                       className="flex items-center p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
                       onClick={() => navigate(`/adgroups/${adGroupId}/keywords/${keyword.id}`)}
                     >
@@ -407,12 +458,11 @@ const AdGroupPage: React.FC = () => {
                           <KeywordSparkline width={650} scores={keyword.scores || []} timeRange={timeRange} />
                         </div>
                         <div className="w-16 flex-shrink-0 text-right">
-                          <span 
-                            className={`inline-flex items-center justify-center w-14 px-2.5 py-1 rounded-full text-xs font-medium ${
-                              keyword.avgQs >= 7 ? 'bg-green-100 text-green-800' :
-                              keyword.avgQs >= 4 ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }`}
+                          <span
+                            className={`inline-flex items-center justify-center w-14 px-2.5 py-1 rounded-full text-xs font-medium ${keyword.avgQs >= 7 ? 'bg-green-100 text-green-800' :
+                                keyword.avgQs >= 4 ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-red-100 text-red-800'
+                              }`}
                           >
                             {keyword.avgQs.toFixed(1)}
                           </span>
@@ -473,8 +523,8 @@ const AdGroupPage: React.FC = () => {
                       const scores = keyword.scores || [];
                       // Calculate average QS from non-zero scores
                       const nonZeroScores = scores.filter(s => s.qs > 0);
-                      const avgQs = nonZeroScores.length > 0 
-                        ? nonZeroScores.reduce((sum, s) => sum + s.qs, 0) / nonZeroScores.length 
+                      const avgQs = nonZeroScores.length > 0
+                        ? nonZeroScores.reduce((sum, s) => sum + s.qs, 0) / nonZeroScores.length
                         : 0;
 
                       return (
@@ -498,11 +548,10 @@ const AdGroupPage: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 w-1/6 whitespace-nowrap">
                             {avgQs > 0 ? (
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                avgQs >= 7 ? 'bg-green-100 text-green-800' :
-                                avgQs >= 4 ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${avgQs >= 7 ? 'bg-green-100 text-green-800' :
+                                  avgQs >= 4 ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                }`}>
                                 {avgQs.toFixed(1)}
                               </span>
                             ) : (
