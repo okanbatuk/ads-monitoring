@@ -18,12 +18,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const { flatNodes: originalFlatNodes, isNodeLoading, loadChildren, toggleNode } = useFlatTree();
   const { expandedNodes } = useAccountTreeContext();
 
-  // Debug için expandedNodes değişikliklerini izle
-  console.log('Sidebar rendered. Current expandedNodes:', Array.from(expandedNodes));
-
-  // flatNodes'u useMemo ile sarmalayarak gereksiz render'ları önle
   const flatNodes = useMemo(() => {
-    console.log('Recalculating flatNodes with expandedNodes:', Array.from(expandedNodes));
     return originalFlatNodes;
   }, [originalFlatNodes, expandedNodes]);
 
@@ -53,7 +48,6 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                 className="cursor-pointer"
                 onClick={(e) => {
                   e.stopPropagation();
-                  console.log('Chevron clicked for node:', node.id, 'current expanded state:', expandedNodes.has(node.id));
                   handleRowClick(node, true);
                 }}
               >
@@ -75,7 +69,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               {node.name}
             </span>
 
-            {isNodeLoading(node.id) ? <FiLoader className="animate-spin ml-2" size={14} /> : node.hasChildren && node.children?.length !== 0 && <span className='total-badge'>{node.children?.length}</span>}
+            {isNodeLoading(node.id) ? <FiLoader className="animate-spin ml-2" size={14} /> : node.hasChildren && node.children?.length !== 0 && expandedNodes.has(node.id) && <span className='total-badge'>{node.children?.length}</span>}
           </div>
         ))}
       </div>

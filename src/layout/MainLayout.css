@@ -74,6 +74,7 @@ html, body, #root {
 .main-content {
   flex: 1;
   margin-left: var(--sidebar-width);
+  transition: margin-left var(--transition-speed) ease-in-out;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -84,6 +85,7 @@ html, body, #root {
 .main-content:not(.sidebar-open) {
   margin-left: 0;
   width: 100%;
+  transition: margin-left var(--transition-speed) ease-in-out;
 }
 
 /* For dark theme */

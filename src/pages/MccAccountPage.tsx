@@ -1,10 +1,23 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAccount, useSubAccounts, useMccAccountScores } from '../services/api';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area, AreaChart } from 'recharts';
-import { format, parse, subDays, addDays, startOfWeek, isSameWeek, isValid, differenceInDays } from 'date-fns';
-import { AccountSparkline } from '../components/AccountSparkline';
-import ScrollToTop from '../components/ScrollToTop';
+import { useState, useMemo } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  useAccount,
+  useSubAccounts,
+  useMccAccountScores,
+} from "../services/api";
+import {
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+  Area,
+  AreaChart,
+} from "recharts";
+import { format, parse, subDays, addDays } from "date-fns";
+import { AccountSparkline } from "../components/AccountSparkline";
+import ScrollToTop from "../components/ScrollToTop";
 
 // Time range options
 const TIME_RANGES = [7, 30, 90, 365];
@@ -16,40 +29,50 @@ interface ScoreData {
   accountCounts: number;
 }
 
-
-
 export const MccAccountPage = () => {
   const { mccId } = useParams<{ mccId: string }>();
   const navigate = useNavigate();
   const [timeRange, setTimeRange] = useState(7);
 
   // Fetch data
-  const { data: accountData, isLoading: isLoadingAccount } = useAccount(mccId || '');
-  const { data: subAccountData, isLoading: isLoadingSubAccounts } = useSubAccounts(mccId || '');
-  const { data: scoresResponse, isLoading: isLoadingScores } = useMccAccountScores(mccId || '', timeRange);
+  const { data: accountData, isLoading: isLoadingAccount } = useAccount(
+    mccId || "",
+  );
+  const { data: subAccountData, isLoading: isLoadingSubAccounts } =
+    useSubAccounts(mccId || "");
+  const { data: scoresResponse, isLoading: isLoadingScores } =
+    useMccAccountScores(mccId || "", timeRange);
 
   // Process scores data
-  const { scores, scoreMap } = useMemo<{ scores: ScoreData[]; scoreMap: Map<string, { qs: number, accountCounts: number }> }>(() => {
-    const defaultReturn = { scores: [], scoreMap: new Map<string, { qs: number, accountCounts: number }>() };
+  const { scores, scoreMap } = useMemo<{
+    scores: ScoreData[];
+    scoreMap: Map<string, { qs: number; accountCounts: number }>;
+  }>(() => {
+    const defaultReturn = {
+      scores: [],
+      scoreMap: new Map<string, { qs: number; accountCounts: number }>(),
+    };
 
     if (!scoresResponse?.data?.scores?.length) {
       return defaultReturn;
     }
 
     const rawScores = scoresResponse.data.scores;
-    const scoreMap = new Map<string, { qs: number, accountCounts: number }>();
+    const scoreMap = new Map<string, { qs: number; accountCounts: number }>();
     const now = new Date();
     const startDate = subDays(now, timeRange - 1);
     // First, map all scores by date for quick lookup
-    rawScores.forEach(score => {
+    rawScores.forEach((score) => {
       if (score.date && score.qs !== undefined) {
-        // Parse the date from dd.MM.yyyy format and convert to yyyy-MM-dd for consistent storage
         try {
-          const dateObj = parse(score.date, 'dd.MM.yyyy', new Date());
-          const formattedDate = format(dateObj, 'yyyy-MM-dd');
-          scoreMap.set(formattedDate, { qs: score.qs, accountCounts: score.accountCount });
+          const dateObj = parse(score.date, "dd.MM.yyyy", new Date());
+          const formattedDate = format(dateObj, "yyyy-MM-dd");
+          scoreMap.set(formattedDate, {
+            qs: score.qs,
+            accountCounts: score.accountCount,
+          });
         } catch (e) {
-          console.warn('Failed to parse date:', score.date, e);
+          console.warn("Failed to parse date:", score.date, e);
         }
       }
     });
@@ -58,23 +81,27 @@ export const MccAccountPage = () => {
     const scores: ScoreData[] = [];
     for (let i = 0; i < timeRange; i++) {
       const currentDate = addDays(startDate, i);
-      const dateStr = format(currentDate, 'yyyy-MM-dd');
-      const displayDate = timeRange <= 364 ? format(currentDate, 'MMM d') : format(currentDate, 'MMM d, yyyy');
+      const dateStr = format(currentDate, "yyyy-MM-dd");
+      const displayDate =
+        timeRange <= 364
+          ? format(currentDate, "MMM d")
+          : format(currentDate, "MMM d, yyyy");
 
       const qs = (scoreMap.get(dateStr) || { qs: 0, accountCounts: 0 }).qs;
-      const accountCounts = (scoreMap.get(dateStr) || { qs: 0, accountCounts: 0 }).accountCounts;
+      const accountCounts = (
+        scoreMap.get(dateStr) || { qs: 0, accountCounts: 0 }
+      ).accountCounts;
 
       scores.push({
         axisDate: displayDate,
         date: dateStr,
         qs,
-        accountCounts
+        accountCounts,
       });
     }
 
     return { scores, scoreMap };
   }, [scoresResponse, timeRange]);
-
 
   const account = accountData?.data;
   const subAccounts = subAccountData?.data?.subAccounts || [];
@@ -83,29 +110,32 @@ export const MccAccountPage = () => {
     const now = new Date();
     const startDate = subDays(now, timeRange - 1);
 
-    return subAccounts.map(account => {
+    return subAccounts.map((account) => {
       const scores = account.scores || [];
 
       // Filter scores for the selected time range
-      const filteredScores = scores.filter(score => {
+      const filteredScores = scores.filter((score) => {
         try {
-          const scoreDate = parse(score.date, 'dd.MM.yyyy', new Date());
+          const scoreDate = parse(score.date, "dd.MM.yyyy", new Date());
           return scoreDate >= startDate && scoreDate <= now;
         } catch (e) {
-          console.warn('Invalid date format:', score.date);
+          console.warn("Invalid date format:", score.date);
           return false;
         }
       });
 
       // Sort scores by date
-      const sortedScores = [...filteredScores].sort((a, b) =>
-        new Date(parse(a.date, 'dd.MM.yyyy', new Date())).getTime() -
-        new Date(parse(b.date, 'dd.MM.yyyy', new Date())).getTime()
+      const sortedScores = [...filteredScores].sort(
+        (a, b) =>
+          new Date(parse(a.date, "dd.MM.yyyy", new Date())).getTime() -
+          new Date(parse(b.date, "dd.MM.yyyy", new Date())).getTime(),
       );
 
-      const avgQs = sortedScores.length > 0
-        ? sortedScores.reduce((sum, score) => sum + (score?.qs || 0), 0) / sortedScores.length
-        : 0;
+      const avgQs =
+        sortedScores.length > 0
+          ? sortedScores.reduce((sum, score) => sum + (score?.qs || 0), 0) /
+            sortedScores.length
+          : 0;
 
       // Calculate QS change if we have at least 2 scores
       let qsChange = 0;
@@ -143,15 +173,16 @@ export const MccAccountPage = () => {
     );
   }
 
-
   if (!account) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Account not found</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Account not found
+          </h2>
           <button
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
           >
             Back to Dashboard
           </button>
@@ -161,12 +192,12 @@ export const MccAccountPage = () => {
   }
 
   // Calculate average QS
-  const avgQs = scores.length > 0
-    ? scores.reduce((sum, score) => sum + score.qs, 0) / scores.length
-    : 0;
+  const avgQs =
+    scores.length > 0
+      ? scores.reduce((sum, score) => sum + score.qs, 0) / scores.length
+      : 0;
 
   // Process sub-accounts with scores and calculate average QS
-
 
   // Get bottom 5 sub-accounts by average QS
   const bottomAccounts = [...processedSubAccounts]
@@ -175,13 +206,20 @@ export const MccAccountPage = () => {
 
   // Get the latest score or default to 0
   const latestScore = scores?.[scores.length - 1]?.qs || 0;
-  const scoreColor = latestScore >= 7 ? 'text-green-600' : latestScore >= 4 ? 'text-yellow-600' : 'text-red-600';
-  const statusColor = account.status === 'ENABLED' ? 'bg-green-500' :
-    account.status === 'PAUSED' ? 'bg-yellow-500' : 'bg-red-500';
-  const statusTooltip = account.status === 'ENABLED' ? 'Account is active' :
-    account.status === 'PAUSED' ? 'Account is paused' : 'Account is removed';
-  const statusText = account.status === 'ENABLED' ? 'text-green-600' :
-    account.status === 'PAUSED' ? 'text-yellow-600' : 'text-red-600';
+  const scoreColor =
+    latestScore >= 7
+      ? "text-green-600"
+      : latestScore >= 4
+        ? "text-yellow-600"
+        : "text-red-600";
+
+  const getStatusStyle = (status: string): { bg: string; tx: string } => {
+    return status === "ENABLED"
+      ? { bg: "bg-green-500", tx: "text-green-600" }
+      : status === "PAUSED"
+        ? { bg: "bg-yellow-500", tx: "text-yellow-600" }
+        : { bg: "bg-red-500", tx: "text-red-600" };
+  };
 
   const gradientOffset = () => {
     const vals = scores.map((d) => d.qs);
@@ -207,12 +245,14 @@ export const MccAccountPage = () => {
                 </h1>
                 <div className="relative group">
                   <span
-                    className={`inline-block w-2 h-2 rounded-full ${statusColor}`}
-                    style={{ marginBottom: '0.25rem' }}
-                    title={statusTooltip}
+                    className={`inline-block w-2 h-2 rounded-full ${getStatusStyle(account.status).bg}`}
+                    style={{ marginBottom: "0.25rem" }}
+                    title={account.status}
                   ></span>
-                  <div className={`cursor-pointer absolute z-10 hidden group-hover:block bg-gray-200 ${statusText} text-xs rounded px-3 py-2 -mt-8 -ml-2`}>
-                    {statusTooltip}
+                  <div
+                    className={`cursor-pointer absolute z-10 hidden group-hover:block bg-gray-200 ${getStatusStyle(account.status).tx} text-xs rounded px-3 py-2 -mt-8 -ml-2`}
+                  >
+                    {account.status}
                   </div>
                 </div>
               </div>
@@ -234,26 +274,28 @@ export const MccAccountPage = () => {
                 </div>
               </div>
             </div>
-
           </div>
         </div>
 
         {/* Quality Score Trend */}
         <div className="bg-white p-6 rounded-lg shadow mb-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-            <h3 className="text-lg font-semibold mb-4 sm:mb-0">Quality Score Trend</h3>
+            <h3 className="text-lg font-semibold mb-4 sm:mb-0">
+              Quality Score Trend
+            </h3>
             <div className="inline-flex rounded-md shadow-sm" role="group">
               {TIME_RANGES.map((days, index) => (
                 <button
                   key={days}
                   type="button"
                   onClick={() => setTimeRange(days)}
-                  className={`px-4 py-2 text-sm font-medium ${timeRange === days
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                    } ${index === 0 ? 'rounded-l-md' : ''
-                    } ${index === TIME_RANGES.length - 1 ? 'rounded-r-md' : ''
-                    } border border-gray-300`}
+                  className={`px-4 py-2 text-sm font-medium ${
+                    timeRange === days
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-gray-700 hover:bg-gray-50"
+                  } ${index === 0 ? "rounded-l-md" : ""} ${
+                    index === TIME_RANGES.length - 1 ? "rounded-r-md" : ""
+                  } border border-gray-300`}
                 >
                   {days}d
                 </button>
@@ -261,18 +303,22 @@ export const MccAccountPage = () => {
             </div>
           </div>
 
-          <div style={{ height: '300px' }}>
+          <div style={{ height: "300px" }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={scores}
                 margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
               >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#f0f0f0"
+                />
                 <XAxis
                   dataKey="axisDate"
                   tick={{ fontSize: 12 }}
                   tickLine={false}
-                  axisLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
+                  axisLine={{ stroke: "#9ca3af", strokeWidth: 1 }}
                   tickMargin={10}
                 />
                 <YAxis
@@ -280,7 +326,7 @@ export const MccAccountPage = () => {
                   tickCount={6}
                   tick={{ fontSize: 12 }}
                   tickLine={false}
-                  axisLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
+                  axisLine={{ stroke: "#9ca3af", strokeWidth: 1 }}
                   width={30}
                 />
                 <Tooltip
@@ -289,29 +335,35 @@ export const MccAccountPage = () => {
                       const qsValue = Number(payload[0].value);
                       const displayQs = qsValue.toFixed(1);
                       return (
-                        <div
-                          className="space-y-1.5 p-2 rounded-lg bg-white border border-gray-200 shadow-md"
-                        >
+                        <div className="space-y-1.5 p-2 rounded-lg bg-white border border-gray-200 shadow-md">
                           <div>
                             <span className="font-semibold text-sm">
-                              {format(new Date(payload[0].payload.date), 'MMM d, yyyy')}
+                              {format(
+                                new Date(payload[0].payload.date),
+                                "MMM d, yyyy",
+                              )}
                             </span>
                           </div>
                           <div className="flex items-center justify-between space-x-4">
-                            <span className="text-gray-500 text-xs">Quality Score</span>
+                            <span className="text-gray-500 text-xs">
+                              Quality Score
+                            </span>
                             <span
-                              className={`font-medium text-sm ${qsValue >= 8
-                                  ? 'text-green-600'
+                              className={`font-medium text-sm ${
+                                qsValue >= 8
+                                  ? "text-green-600"
                                   : qsValue >= 5
-                                    ? 'text-yellow-600'
-                                    : 'text-red-600'
-                                }`}
+                                    ? "text-yellow-600"
+                                    : "text-red-600"
+                              }`}
                             >
                               {displayQs}
                             </span>
                           </div>
                           <div className="flex items-center justify-between space-x-4">
-                            <span className="text-gray-600 text-xs">Accounts:</span>
+                            <span className="text-gray-600 text-xs">
+                              Accounts:
+                            </span>
                             <span className="font-medium text-sm text-gray-900">
                               {payload[0].payload.accountCounts}
                             </span>
@@ -324,12 +376,8 @@ export const MccAccountPage = () => {
                 />
                 <defs>
                   <linearGradient id="colorQs" x1="0" y1="0" x2="0" y2="1">
-                    {/* <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/> */}
                     <stop offset="0" stopColor="#3b82f6" stopOpacity={1} />
                     <stop offset={off} stopColor="#3b82f6" stopOpacity={0.1} />
-                    <stop offset={off} stopColor="red" stopOpacity={0.1} />
-                    <stop offset="1" stopColor="red" stopOpacity={1} />
                   </linearGradient>
                 </defs>
                 <Area
@@ -340,7 +388,7 @@ export const MccAccountPage = () => {
                   fill="url(#colorQs)"
                   strokeWidth={2}
                   dot={false}
-                  activeDot={{ r: 6, stroke: '#2563eb', strokeWidth: 2 }}
+                  activeDot={{ r: 6, stroke: "#2563eb", strokeWidth: 2 }}
                 />
                 <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" />
                 <ReferenceLine y={4} stroke="#ef4444" strokeDasharray="3 3" />
@@ -360,13 +408,22 @@ export const MccAccountPage = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6"
+                    >
                       Sub Account
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/3">
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/3"
+                    >
                       Qs Trend
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6"
+                    >
                       Avg QS
                     </th>
                   </tr>
@@ -377,11 +434,31 @@ export const MccAccountPage = () => {
                       <tr
                         key={subAccount.id}
                         className="hover:bg-gray-50 cursor-pointer"
-                        onClick={() => navigate(`/mcc/${mccId}/sub/${subAccount.id}`)}
+                        onClick={() =>
+                          navigate(`/mcc/${mccId}/sub/${subAccount.id}`)
+                        }
                       >
                         <td className="px-6 py-4 whitespace-nowrap w-1/6">
-                          <div className="text-sm font-medium text-gray-900">{subAccount.name}</div>
-                          <div className="text-xs text-gray-500">{subAccount.accountId}</div>
+                          <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                            <span className="text-sm font-medium text-gray-900">
+                              {subAccount.name}
+                            </span>
+                            <div className="relative group ">
+                              <span
+                                className={`inline-block w-2 h-2 rounded-full ${getStatusStyle(subAccount.status).bg}`}
+                                style={{ marginTop: "0.25rem" }}
+                                title={subAccount.status}
+                              ></span>
+                              <div
+                                className={`cursor-pointer absolute z-10 hidden group-hover:block bg-gray-200 ${getStatusStyle(subAccount.status).tx} text-xs rounded px-3 py-2 -mt-8 -ml-2`}
+                              >
+                                {subAccount.status}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {subAccount.accountId}
+                          </div>
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap w-2/3">
                           <div className="h-10 w-full">
@@ -394,15 +471,23 @@ export const MccAccountPage = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap w-1/6">
                           <div className="flex items-center">
-                            <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${subAccount.avgQs >= 8 ? 'bg-green-100 text-green-800' :
-                              subAccount.avgQs >= 5 ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>
+                            <span
+                              className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                subAccount.avgQs >= 8
+                                  ? "bg-green-100 text-green-800"
+                                  : subAccount.avgQs >= 5
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-red-100 text-red-800"
+                              }`}
+                            >
                               {subAccount.avgQs.toFixed(1)}
                             </span>
                             {subAccount.qsChange !== 0 && (
-                              <span className={`ml-2 text-xs ${subAccount.qsChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {subAccount.qsChange > 0 ? '↑' : '↓'} {Math.abs(subAccount.qsChange).toFixed(1)}%
+                              <span
+                                className={`ml-2 text-xs ${subAccount.qsChange > 0 ? "text-green-600" : "text-red-600"}`}
+                              >
+                                {subAccount.qsChange > 0 ? "↑" : "↓"}{" "}
+                                {Math.abs(subAccount.qsChange).toFixed(1)}%
                               </span>
                             )}
                           </div>
