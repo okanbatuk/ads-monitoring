@@ -55,7 +55,7 @@ const accountToTreeNode = (
   };
 };
 
-interface UseAccountTreeReturn {
+export interface UseAccountTreeReturn {
   treeNodes: TreeNode[];
   isNodeLoading: (nodeId: string) => boolean;
   loadChildren: (node: TreeNode, onComplete?: (children: TreeNode[]) => void) => Promise<void>;
@@ -302,43 +302,41 @@ export const useAccountTree = (): UseAccountTreeReturn => {
   }, [fetchAccounts, fetchAccountCampaigns, fetchCampaignAdGroups, expandedNodes]);
 
   // Toggle node expansion and load children 
-  const toggleNode = useCallback(
-    async (nodeId: string) => {
-      // Don't reinitialize if we already have nodes
-      if (!nodeId || treeNodes.length === 0) return;
+const toggleNode = useCallback(
+  async (nodeId: string) => {
+    if (!nodeId || treeNodes.length === 0) return;
 
-      const node = findNode(treeNodes, nodeId);
-      if (!node) return;
+    const node = findNode(treeNodes, nodeId);
+    if (!node) return;
 
-      // Toggle expanded state
-      const isExpanded = expandedNodes.has(nodeId);
-      const newExpandedNodes = new Set(expandedNodes);
-
-      if (isExpanded) {
+    // Fonksiyonel güncelleme kullan
+    setExpandedNodes(prev => {
+      const newExpandedNodes = new Set(prev);
+      if (newExpandedNodes.has(nodeId)) {
         newExpandedNodes.delete(nodeId);
+        console.log(`Node ${nodeId} kapatıldı. Yeni expandedNodes:`, Array.from(newExpandedNodes));
       } else {
         newExpandedNodes.add(nodeId);
+        console.log(`Node ${nodeId} açıldı. Yeni expandedNodes:`, Array.from(newExpandedNodes));
       }
+      return newExpandedNodes;
+    });
 
-      setExpandedNodes(() => (newExpandedNodes));
-
-      // If expanding and node has children to load, load them
-      if (!isExpanded) {
-        // Always try to load children if it's an account node, even if it has children
-        // This ensures we have the latest data
-        if (node.type === 'account' || node.type === 'mcc') {
-          try {
-            await loadChildren(node);
-          } catch (error) {
-            // Error is handled in loadChildren
-          }
-        } else if (node.hasChildren && (!node.children || node.children.length === 0)) {
+    // Sadece genişletme işleminde çocukları yükle
+    if (!expandedNodes.has(nodeId)) {
+      if (node.type === 'account' || node.type === 'mcc') {
+        try {
           await loadChildren(node);
+        } catch (error) {
+          console.error('Error loading children:', error);
         }
+      } else if (node.hasChildren && (!node.children || node.children.length === 0)) {
+        await loadChildren(node);
       }
-    },
-    [treeNodes, findNode, loadChildren]
-  );
+    }
+  },
+  [treeNodes, findNode, loadChildren, expandedNodes] // expandedNodes'u ekleyin
+);
 
   // Initialize tree with MCC accounts when the component mounts
   useEffect(() => {

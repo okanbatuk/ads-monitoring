@@ -1,9 +1,11 @@
 // src/components/Sidebar.tsx
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAccountTree, type TreeNode } from '@/hooks/useAccountTree';
+import { type TreeNode } from '@/hooks/useAccountTree';
 import { FiChevronDown, FiChevronRight, FiLoader } from 'react-icons/fi';
 import { useFlatTree } from '@/hooks/useFlatTree';
-import "./Sidebar.css"
+import "./Sidebar.css";
+import { useMemo } from 'react';
+import { useAccountTreeContext } from '@/context/AccountTreeContext';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -13,8 +15,17 @@ interface SidebarProps {
 const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { flatNodes, isNodeLoading, loadChildren, toggleNode } = useFlatTree();
-  const { expandedNodes } = useAccountTree();
+  const { flatNodes: originalFlatNodes, isNodeLoading, loadChildren, toggleNode } = useFlatTree();
+  const { expandedNodes } = useAccountTreeContext();
+
+  // Debug için expandedNodes değişikliklerini izle
+  console.log('Sidebar rendered. Current expandedNodes:', Array.from(expandedNodes));
+
+  // flatNodes'u useMemo ile sarmalayarak gereksiz render'ları önle
+  const flatNodes = useMemo(() => {
+    console.log('Recalculating flatNodes with expandedNodes:', Array.from(expandedNodes));
+    return originalFlatNodes;
+  }, [originalFlatNodes, expandedNodes]);
 
   const handleRowClick = (node: TreeNode, isChevron: boolean) => {
     if (isChevron) {
@@ -37,12 +48,24 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         {flatNodes.map(({ node, depth }) => (
           <div key={node.id} className={`tree-row flex items-center px-2 py-1 ${expandedNodes.has(node.id) ? 'active' : ''}`} style={{ paddingLeft: `${12 + depth * 16}px` }}>
             {/* Chevron – sadece expand */}
-            {node.hasChildren ? <span
-              className="cursor-pointer"
-              onClick={(e) => { e.stopPropagation(); handleRowClick(node, true); }}
-            >
-              {expandedNodes.has(node.id) ? <FiChevronDown key={node.id + '-down'} size={16} /> : <FiChevronRight key={node.id + '-right'} size={16} />}
-            </span> : <span className='mr-1'></span>}
+            {node.hasChildren ? (
+              <span
+                className="cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log('Chevron clicked for node:', node.id, 'current expanded state:', expandedNodes.has(node.id));
+                  handleRowClick(node, true);
+                }}
+              >
+                {expandedNodes.has(node.id) ? (
+                  <FiChevronDown key={`${node.id}-down`} size={16} />
+                ) : (
+                  <FiChevronRight key={`${node.id}-right`} size={16} />
+                )}
+              </span>
+            ) : (
+              <span className='w-4' />
+            )}
 
             {/* Node name – sadece navigate */}
             <span
