@@ -1,4 +1,4 @@
-import { FiMoon, FiSun, FiMenu } from 'react-icons/fi';
+import { FiMoon, FiSun, FiMenu, FiX } from 'react-icons/fi';
 import { useTheme } from '../contexts/ThemeProvider';
 import './Header.css';
 import { useNavigate } from 'react-router-dom';
@@ -20,7 +20,7 @@ export default function Header({ isOpen, onToggleSidebar }: HeaderProps) {
           onClick={onToggleSidebar}
           aria-label={isOpen ? 'Close menu' : 'Open menu'}
         >
-          <FiMenu size={24} />
+          {isOpen ? <FiX size={24} /> : <FiMenu size={24} />}
         </button>
         <div style={{ cursor: 'pointer' }} onClick={() => navigate('/')}>
 
@@ -28,13 +28,17 @@ export default function Header({ isOpen, onToggleSidebar }: HeaderProps) {
         </div>
       </div>
 
-      {/* <button
-        className="theme-toggle"
+      <button
+        className="p-2 theme-toggle rounded-full hover:bg-opacity-20 hover:bg-gray-600 dark:hover:bg-gray-400 dark:hover:bg-opacity-20 transition-colors duration-200"
         onClick={toggleTheme}
         aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
       >
-        {theme === 'dark' ? <FiSun size={20} /> : <FiMoon size={20} />}
-      </button> */}
+        {theme === 'dark' ? (
+          <FiSun className="w-5 h-5 text-yellow-300" />
+        ) : (
+          <FiMoon className="w-5 h-5 text-white-700" />
+        )}
+      </button>
     </header>
   );
 }

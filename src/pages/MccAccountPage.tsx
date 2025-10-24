@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useTheme } from "../contexts/ThemeProvider";
 import {
   useAccount,
   useSubAccounts,
@@ -33,6 +34,7 @@ export const MccAccountPage = () => {
   const { mccId } = useParams<{ mccId: string }>();
   const navigate = useNavigate();
   const [timeRange, setTimeRange] = useState(7);
+  const { theme } = useTheme();
 
   // Fetch data
   const { data: accountData, isLoading: isLoadingAccount } = useAccount(
@@ -134,7 +136,7 @@ export const MccAccountPage = () => {
       const avgQs =
         sortedScores.length > 0
           ? sortedScores.reduce((sum, score) => sum + (score?.qs || 0), 0) /
-            sortedScores.length
+          sortedScores.length
           : 0;
 
       // Calculate QS change if we have at least 2 scores
@@ -155,15 +157,15 @@ export const MccAccountPage = () => {
 
   if (isLoadingAccount || isLoadingScores || isLoadingSubAccounts) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className={`min-h-screen p-6 ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
         <div className="max-w-7xl mx-auto">
           <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/3 mb-6"></div>
+            <div className={`h-8 rounded w-1/3 mb-6 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}></div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-32 bg-white rounded-lg shadow p-6">
-                  <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
-                  <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+                <div key={i} className={`h-32 rounded-lg shadow p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
+                  <div className={`h-4 rounded w-1/2 mb-4 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}></div>
+                  <div className={`h-8 rounded w-1/3 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}></div>
                 </div>
               ))}
             </div>
@@ -175,13 +177,13 @@ export const MccAccountPage = () => {
 
   if (!account) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className={`min-h-screen p-6 ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          <h2 className={`text-2xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             Account not found
           </h2>
           <button
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
             onClick={() => navigate("/")}
           >
             Back to Dashboard
@@ -233,14 +235,14 @@ export const MccAccountPage = () => {
   const off = gradientOffset();
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className={`min-h-screen p-6`}>
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
+        <div className={`rounded-lg shadow p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {account.name}
                 </h1>
                 <div className="relative group">
@@ -256,11 +258,11 @@ export const MccAccountPage = () => {
                   </div>
                 </div>
               </div>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                 Account ID: {account.accountId}
               </p>
 
-              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+              <div className={`flex flex-wrap items-center gap-4 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
                 <div className="flex items-center">
                   <span className="font-medium">Quality Score: </span>
                   <span className={`ml-1 font-semibold ${scoreColor}`}>
@@ -278,9 +280,9 @@ export const MccAccountPage = () => {
         </div>
 
         {/* Quality Score Trend */}
-        <div className="bg-white p-6 rounded-lg shadow mb-8">
+        <div className={`p-6 rounded-lg shadow mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-            <h3 className="text-lg font-semibold mb-4 sm:mb-0">
+            <h3 className={`text-lg font-semibold mb-4 sm:mb-0 ${theme === 'dark' ? 'text-white' : ''}`}>
               Quality Score Trend
             </h3>
             <div className="inline-flex rounded-md shadow-sm" role="group">
@@ -289,13 +291,13 @@ export const MccAccountPage = () => {
                   key={days}
                   type="button"
                   onClick={() => setTimeRange(days)}
-                  className={`px-4 py-2 text-sm font-medium ${
-                    timeRange === days
+                  className={`px-4 py-2 text-sm font-medium ${timeRange === days
                       ? "bg-blue-600 text-white"
-                      : "bg-white text-gray-700 hover:bg-gray-50"
-                  } ${index === 0 ? "rounded-l-md" : ""} ${
-                    index === TIME_RANGES.length - 1 ? "rounded-r-md" : ""
-                  } border border-gray-300`}
+                      : theme === 'dark'
+                        ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
+                        : "bg-white text-gray-700 hover:bg-gray-50"
+                    } ${index === 0 ? "rounded-l-md" : ""} ${index === TIME_RANGES.length - 1 ? "rounded-r-md" : ""
+                    } ${theme === 'dark' ? 'border-gray-600' : 'border-gray-300'} border`}
                 >
                   {days}d
                 </button>
@@ -312,21 +314,27 @@ export const MccAccountPage = () => {
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#f0f0f0"
+                  stroke={theme === 'dark' ? '#374151' : '#f0f0f0'}
                 />
                 <XAxis
                   dataKey="axisDate"
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 12, fill: theme === 'dark' ? '#9ca3af' : '#4b5563' }}
                   tickLine={false}
-                  axisLine={{ stroke: "#9ca3af", strokeWidth: 1 }}
+                  axisLine={{
+                    stroke: theme === 'dark' ? '#4b5563' : '#9ca3af',
+                    strokeWidth: 1
+                  }}
                   tickMargin={10}
                 />
                 <YAxis
                   domain={[0, 10]}
                   tickCount={6}
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 12, fill: theme === 'dark' ? '#9ca3af' : '#4b5563' }}
                   tickLine={false}
-                  axisLine={{ stroke: "#9ca3af", strokeWidth: 1 }}
+                  axisLine={{
+                    stroke: theme === 'dark' ? '#4b5563' : '#9ca3af',
+                    strokeWidth: 1
+                  }}
                   width={30}
                 />
                 <Tooltip
@@ -335,7 +343,10 @@ export const MccAccountPage = () => {
                       const qsValue = Number(payload[0].value);
                       const displayQs = qsValue.toFixed(1);
                       return (
-                        <div className="space-y-1.5 p-2 rounded-lg bg-white border border-gray-200 shadow-md">
+                        <div className={`space-y-1.5 p-2 rounded-lg border shadow-md ${theme === 'dark'
+                            ? 'bg-gray-800 border-gray-700'
+                            : 'bg-white border-gray-200'
+                          }`}>
                           <div>
                             <span className="font-semibold text-sm">
                               {format(
@@ -345,26 +356,28 @@ export const MccAccountPage = () => {
                             </span>
                           </div>
                           <div className="flex items-center justify-between space-x-4">
-                            <span className="text-gray-500 text-xs">
+                            <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                              }`}>
                               Quality Score
                             </span>
                             <span
-                              className={`font-medium text-sm ${
-                                qsValue >= 8
+                              className={`font-medium text-sm ${qsValue >= 8
                                   ? "text-green-600"
                                   : qsValue >= 5
                                     ? "text-yellow-600"
                                     : "text-red-600"
-                              }`}
+                                }`}
                             >
                               {displayQs}
                             </span>
                           </div>
                           <div className="flex items-center justify-between space-x-4">
-                            <span className="text-gray-600 text-xs">
+                            <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                              }`}>
                               Accounts:
                             </span>
-                            <span className="font-medium text-sm text-gray-900">
+                            <span className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                              }`}>
                               {payload[0].payload.accountCounts}
                             </span>
                           </div>
@@ -398,49 +411,57 @@ export const MccAccountPage = () => {
         </div>
 
         {/* Bottom 5 Sub Accounts */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className={`p-6 rounded-lg shadow ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Bottom 5 Sub Accounts</h3>
+            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : ''}`}>
+              Bottom 5 Sub Accounts
+            </h3>
           </div>
 
           {bottomAccounts.length > 0 ? (
             <div className="overflow-hidden">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className={theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}>
                   <tr>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6"
+                      className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
+                        }`}
                     >
                       Sub Account
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/3"
+                      className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-2/3 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
+                        }`}
                     >
                       Qs Trend
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6"
+                      className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
+                        }`}
                     >
                       Avg QS
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {bottomAccounts.map((subAccount) => {
+                <tbody className={`divide-y ${theme === 'dark' ? 'divide-gray-700 bg-gray-800' : 'divide-gray-200 bg-white'
+                  }`}>
+                  {bottomAccounts.map((subAccount, index) => {
                     return (
                       <tr
                         key={subAccount.id}
-                        className="hover:bg-gray-50 cursor-pointer"
+                        className={`cursor-pointer ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+                          }`}
                         onClick={() =>
                           navigate(`/mcc/${mccId}/sub/${subAccount.id}`)
                         }
                       >
-                        <td className="px-6 py-4 whitespace-nowrap w-1/6">
-                          <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                            <span className="text-sm font-medium text-gray-900">
+                        <td className={`px-6 py-4 whitespace-nowrap w-1/6 ${index === bottomAccounts.length - 1 && 'align-top'}`}>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                              }`}>
                               {subAccount.name}
                             </span>
                             <div className="relative group ">
@@ -456,29 +477,38 @@ export const MccAccountPage = () => {
                               </div>
                             </div>
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                            }`}>
                             {subAccount.accountId}
                           </div>
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap w-2/3">
-                          <div className="h-10 w-full">
+                          <div className={`w-full ${
+                            // Add more height to the last item in the list
+                            index === bottomAccounts.length - 1 ? 'h-24' : 'h-10'
+                            }`}>
                             <AccountSparkline
-                              width={750}
+                              width={850}
                               scores={subAccount.scores || []}
                               timeRange={timeRange}
                             />
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap w-1/6">
+                        <td className={`px-6 py-4 whitespace-nowrap w-1/6 ${index === bottomAccounts.length - 1 && 'align-top'}`}>
                           <div className="flex items-center">
                             <span
-                              className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                subAccount.avgQs >= 8
-                                  ? "bg-green-100 text-green-800"
+                              className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${subAccount.avgQs >= 8
+                                  ? theme === 'dark'
+                                    ? 'bg-green-900 text-green-200'
+                                    : 'bg-green-100 text-green-800'
                                   : subAccount.avgQs >= 5
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-red-100 text-red-800"
-                              }`}
+                                    ? theme === 'dark'
+                                      ? 'bg-yellow-900 text-yellow-200'
+                                      : 'bg-yellow-100 text-yellow-800'
+                                    : theme === 'dark'
+                                      ? 'bg-red-900 text-red-200'
+                                      : 'bg-red-100 text-red-800'
+                                }`}
                             >
                               {subAccount.avgQs.toFixed(1)}
                             </span>
@@ -499,7 +529,8 @@ export const MccAccountPage = () => {
               </table>
             </div>
           ) : (
-            <div className="text-center py-4 text-gray-500">
+            <div className={`text-center py-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+              }`}>
               No sub accounts found
             </div>
           )}

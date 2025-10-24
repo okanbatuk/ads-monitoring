@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
+import React, { useMemo, useContext } from 'react';
+import { useTheme } from '../contexts/ThemeProvider';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, ComposedChart, CartesianGrid, Bar } from 'recharts';
 import { format, parse, subDays, addDays, startOfWeek, isSameWeek, isValid } from 'date-fns';
 import { AccountScoreDto } from '../types/api.types';
 
@@ -23,12 +24,12 @@ export const AccountSparkline: React.FC<AccountSparklineProps> = ({
     const startDate = subDays(now, timeRange - 1);
 
     // Create a map of date strings to scores for easy lookup
-    const scoreMap = new Map<string, { qs: number , campaignCount: number }>();
+    const scoreMap = new Map<string, { qs: number, campaignCount: number }>();
     scores.forEach(score => {
       try {
         const date = parse(score.date, 'dd.MM.yyyy', new Date());
         if (isValid(date)) {
-          scoreMap.set(format(date, 'yyyy-MM-dd'), { qs: score.qs, campaignCount: score.campaignCount});
+          scoreMap.set(format(date, 'yyyy-MM-dd'), { qs: score.qs, campaignCount: score.campaignCount });
         }
       } catch (e) {
         console.warn('Invalid date in sparkline data:', score.date);
@@ -50,7 +51,7 @@ export const AccountSparkline: React.FC<AccountSparklineProps> = ({
         const existingWeek = weeklyData.find(w => isSameWeek(w.date, weekStart, { weekStartsOn: 1 }));
 
         const dateStr = format(date, 'yyyy-MM-dd');
-        const scoreData = scoreMap.get(dateStr) || { qs: 0,campaignCount: 0 };
+        const scoreData = scoreMap.get(dateStr) || { qs: 0, campaignCount: 0 };
 
         if (existingWeek) {
           existingWeek.qs += scoreData.qs;
@@ -77,7 +78,7 @@ export const AccountSparkline: React.FC<AccountSparklineProps> = ({
     return dateArray.map(date => {
       const dateStr = format(date, 'yyyy-MM-dd');
       const displayDate = format(date, 'MMM d');
-      const scoreData = scoreMap.get(dateStr) || { qs: 0,campaignCount: 0 };
+      const scoreData = scoreMap.get(dateStr) || { qs: 0, campaignCount: 0 };
 
       return {
         date: displayDate,
@@ -95,33 +96,55 @@ export const AccountSparkline: React.FC<AccountSparklineProps> = ({
     );
   }
 
+  const { theme } = useTheme();
+
   // Custom tooltip component
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const qsValue = Number(payload[0].value);
       const displayQs = qsValue.toFixed(1);
+      const isDark = theme === 'dark';
+
       return (
-        <div 
-          className="space-y-1.5 p-3 rounded-lg bg-gray-50/95 backdrop-blur-sm border border-gray-100 shadow-sm"
+        <div
+          className={`space-y-2 p-3 rounded-lg backdrop-blur-sm border shadow-sm ${isDark
+              ? 'bg-gray-800 border-gray-700'
+              : 'bg-gray-50/95 border-gray-100'
+            }`}
           style={{
-            boxShadow: '0 4px 20px -5px rgba(0, 0, 0, 0.05)'
+            boxShadow: isDark
+              ? '0 4px 20px -5px rgba(0, 0, 0, 0.2)'
+              : '0 4px 20px -5px rgba(0, 0, 0, 0.05)',
+            zIndex: 1000 // Ensure tooltip appears above other elements
           }}>
           <div className='flex items-center justify-between space-x-4'>
-            <span className='text-gray-500 text-xs'>{payload[0].payload.date}</span>
+            <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-500'
+              }`}>
+              {payload[0].payload.date}
+            </span>
           </div>
           <div className="flex items-center justify-between space-x-4">
-            <span className="text-gray-500 text-xs">Quality Score</span>
-            <span 
-              className={`font-medium ${
-                qsValue >= 8 ? 'text-green-600' : 
-                qsValue >= 5 ? 'text-yellow-600' : 'text-red-600'
+            <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'
               }`}>
+              Quality Score
+            </span>
+            <span
+              className={`text-sm font-medium ${qsValue >= 8
+                  ? isDark ? 'text-green-400' : 'text-green-600'
+                  : qsValue >= 5
+                    ? isDark ? 'text-yellow-400' : 'text-yellow-600'
+                    : isDark ? 'text-red-400' : 'text-red-600'
+                }`}>
               {displayQs}
             </span>
           </div>
           <div className="flex items-center justify-between space-x-4">
-            <span className="text-gray-500 text-xs">Campaigns</span>
-            <span className="font-medium text-gray-900">
+            <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+              Campaigns
+            </span>
+            <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'
+              }`}>
               {payload[0].payload.campaignCount}
             </span>
           </div>
@@ -135,27 +158,29 @@ export const AccountSparkline: React.FC<AccountSparklineProps> = ({
     <div style={{ width, height }} className="flex items-center">
       <div className="flex-1 h-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart
+          <ComposedChart
             data={processedData}
             margin={{ top: 2, right: 2, bottom: 2, left: 2 }}
           >
-            <defs>
-              <linearGradient id="sparklineGradient" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#3B82F6" />
-                <stop offset="100%" stopColor="#8B5CF6" />
-              </linearGradient>
-            </defs>
-            <XAxis 
-              dataKey="date" 
+            <XAxis
+              dataKey="date"
               hide={true}
             />
-            <YAxis 
-              domain={[0, 10]} 
+            <YAxis
+              domain={[0, 10]}
               hide={true}
             />
-            <Tooltip 
+            <Tooltip
               content={<CustomTooltip />}
-              cursor={{ stroke: '#E5E7EB', strokeWidth: 1 }}
+              cursor={{ stroke: theme === 'dark' ? '#4B5563' : '#E5E7EB', strokeWidth: 1 }}
+              wrapperStyle={{ zIndex: 1000 }}
+            />
+            <Bar 
+              dataKey="qs" 
+              barSize={20} 
+              fill={theme === 'dark' ? '#3B82F6' : '#3B82F6'}
+              fillOpacity={theme === 'dark' ? 0.2 : 0.7}
+              radius={[2, 2, 0, 0]}
             />
             <Line
               type="monotone"
@@ -166,7 +191,7 @@ export const AccountSparkline: React.FC<AccountSparklineProps> = ({
               isAnimationActive={false}
               connectNulls={true}
             />
-          </LineChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </div>

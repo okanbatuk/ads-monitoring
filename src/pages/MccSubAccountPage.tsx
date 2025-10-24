@@ -199,20 +199,6 @@ const MccSubAccountPage: React.FC = () => {
     return sum / validScores.length;
   }, [scores]);
 
-  // Get the last 7 days of scores for the chart
-  const lastSevenDaysScores = useMemo(() => {
-    if (!scores?.length) return [];
-    return scores.slice(-7);
-  }, [scores]);
-
-  const recentCampaigns = useMemo(() => {
-    return campaigns.slice(0, 5);
-  }, [campaigns]);
-
-  const handleTimeRangeChange = (days: number) => {
-    setTimeRange(days);
-    refetchScores();
-  };
 
   // Loading and error states
   const isLoading = isLoadingAccount || isLoadingScores || isLoadingCampaigns;
@@ -249,7 +235,7 @@ const MccSubAccountPage: React.FC = () => {
   const off = gradientOffset();
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">

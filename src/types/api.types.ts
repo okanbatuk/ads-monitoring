@@ -26,6 +26,7 @@ export interface AccountDto {
   accountId: string;
   name: string;
   status: string;
+  type: boolean;
   parentId?: number;
   children?: AccountDto[];
   scores?: AccountScoreDto[];

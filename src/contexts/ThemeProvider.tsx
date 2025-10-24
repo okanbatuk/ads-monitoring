@@ -17,13 +17,14 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   // Set theme on initial load
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') as Theme | null;
-    // Default to light theme if no saved preference
-    const systemPrefersDark = false; // Force light theme by default
+    // Check system preference
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
     // Use saved theme, then system preference, default to light
     const initialTheme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
     setTheme(initialTheme);
     document.documentElement.setAttribute('data-theme', initialTheme);
+    document.documentElement.classList.toggle('dark', initialTheme === 'dark');
     setIsMounted(true);
 
     // Listen for system theme changes
@@ -45,6 +46,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
     document.documentElement.setAttribute('data-theme', newTheme);
+    document.documentElement.classList.toggle('dark', newTheme === 'dark');
   };
 
   // Prevent theme flickering on initial render

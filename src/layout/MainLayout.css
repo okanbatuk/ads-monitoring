@@ -21,11 +21,15 @@
   --primary-color: #6366f1;
   --primary-hover: #818cf8;
   --bg-color: #111827;
-  --text-color: #f9fafb;
+  --text-color: #ffffff;
   --text-secondary: #9ca3af;
   --border-color: #374151;
   --hover-bg: #1f2937;
-  --header-bg: #111827;
+  --header-bg: linear-gradient(
+    to left,
+    #1f2937 0%,
+    #111827 100%
+  );
   --sidebar-bg: #1f2937;
 }
 
@@ -98,7 +102,45 @@ html, body, #root {
   flex: 1;
   overflow-y: auto;
   width: 100%;
+  min-height: calc(100vh - var(--header-height));
   color: var(--text-color);
+  background-color: #f9fafb;
+  position: relative;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  padding: 1.5rem;
+}
+
+/* Dark theme styles */
+[data-theme="dark"] .content {
+  background-color: #1a2233;
+  background-image: linear-gradient(
+    to bottom left,
+    rgba(40, 80, 160, 0.2),
+    rgba(40, 86, 195, 0.1)
+  );
+  color: #f9fafb;
+}
+
+/* Add a subtle pattern to the background */
+.content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.03;
+  z-index: 0;
+  background-image: 
+    radial-gradient(circle at 1px 1px, currentColor 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+
+/* Ensure content is above the pattern */
+.content > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Responsive styles */
