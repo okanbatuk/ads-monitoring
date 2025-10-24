@@ -16,6 +16,8 @@ interface ScoreData {
   accountCounts: number;
 }
 
+
+
 export const MccAccountPage = () => {
   const { mccId } = useParams<{ mccId: string }>();
   const navigate = useNavigate();
@@ -63,7 +65,7 @@ export const MccAccountPage = () => {
       const accountCounts = (scoreMap.get(dateStr) || { qs: 0, accountCounts: 0 }).accountCounts;
 
       scores.push({
-        axisDate:displayDate,
+        axisDate: displayDate,
         date: dateStr,
         qs,
         accountCounts
@@ -181,6 +183,17 @@ export const MccAccountPage = () => {
   const statusText = account.status === 'ENABLED' ? 'text-green-600' :
     account.status === 'PAUSED' ? 'text-yellow-600' : 'text-red-600';
 
+  const gradientOffset = () => {
+    const vals = scores.map((d) => d.qs);
+    const dataMax = Math.max(...vals);
+    const dataMin = Math.min(...vals);
+    if (dataMax <= 4) return 0;
+    if (dataMin >= 7) return 1;
+    return dataMax / (dataMax - dataMin);
+  };
+
+  const off = gradientOffset();
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -195,7 +208,7 @@ export const MccAccountPage = () => {
                 <div className="relative group">
                   <span
                     className={`inline-block w-2 h-2 rounded-full ${statusColor}`}
-                    style={{marginBottom: '0.25rem'}}
+                    style={{ marginBottom: '0.25rem' }}
                     title={statusTooltip}
                   ></span>
                   <div className={`cursor-pointer absolute z-10 hidden group-hover:block bg-gray-200 ${statusText} text-xs rounded px-3 py-2 -mt-8 -ml-2`}>
@@ -207,20 +220,20 @@ export const MccAccountPage = () => {
                 Account ID: {account.accountId}
               </p>
 
-            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-              <div className="flex items-center">
-                <span className="font-medium">Quality Score: </span>
-                <span className={`ml-1 font-semibold ${scoreColor}`}>
-                  {latestScore.toFixed(1)}/10
-                </span>
-              </div>
-              <div className="h-4 w-px bg-gray-300"></div>
-              <div>
-                <span className="font-medium">Sub Accounts: </span>
-                <span className="font-semibold">{subAccounts.length}</span>
+              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                <div className="flex items-center">
+                  <span className="font-medium">Quality Score: </span>
+                  <span className={`ml-1 font-semibold ${scoreColor}`}>
+                    {latestScore.toFixed(1)}/10
+                  </span>
+                </div>
+                <div className="h-4 w-px bg-gray-300"></div>
+                <div>
+                  <span className="font-medium">Sub Accounts: </span>
+                  <span className="font-semibold">{subAccounts.length}</span>
+                </div>
               </div>
             </div>
-          </div>
 
           </div>
         </div>
@@ -250,13 +263,16 @@ export const MccAccountPage = () => {
 
           <div style={{ height: '300px' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={scores}>
+              <AreaChart
+                data={scores}
+                margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                 <XAxis
                   dataKey="axisDate"
                   tick={{ fontSize: 12 }}
                   tickLine={false}
-                  axisLine={{ stroke: '#e5e7eb' }}
+                  axisLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
                   tickMargin={10}
                 />
                 <YAxis
@@ -264,7 +280,7 @@ export const MccAccountPage = () => {
                   tickCount={6}
                   tick={{ fontSize: 12 }}
                   tickLine={false}
-                  axisLine={{ stroke: '#e5e7eb' }}
+                  axisLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
                   width={30}
                 />
                 <Tooltip
@@ -274,22 +290,28 @@ export const MccAccountPage = () => {
                       const displayQs = qsValue.toFixed(1);
                       return (
                         <div
-                          className="space-y-1.5 p-2 rounded-lg bg-gray-50/95 backdrop-blur-sm border border-gray-100 shadow-md"
-                          style={{
-                            boxShadow: '0 4px 20px -5px rgba(31, 78, 195, 0.05)'
-                          }}
+                          className="space-y-1.5 p-2 rounded-lg bg-white border border-gray-200 shadow-md"
                         >
-                          <div><span className='font-semibold text-sm'>{format(payload[0].payload.date, 'MMM d, yyyy')}</span></div>
+                          <div>
+                            <span className="font-semibold text-sm">
+                              {format(new Date(payload[0].payload.date), 'MMM d, yyyy')}
+                            </span>
+                          </div>
                           <div className="flex items-center justify-between space-x-4">
                             <span className="text-gray-500 text-xs">Quality Score</span>
-                            <span className={`font-medium text-sm ${qsValue >= 8 ? 'text-green-600' :
-                              qsValue >= 5 ? 'text-yellow-600' : 'text-red-600'
-                              }`}>
+                            <span
+                              className={`font-medium text-sm ${qsValue >= 8
+                                  ? 'text-green-600'
+                                  : qsValue >= 5
+                                    ? 'text-yellow-600'
+                                    : 'text-red-600'
+                                }`}
+                            >
                               {displayQs}
                             </span>
                           </div>
                           <div className="flex items-center justify-between space-x-4">
-                            <span className="text-gray-600 text-xs">Accounts:</span>{' '}
+                            <span className="text-gray-600 text-xs">Accounts:</span>
                             <span className="font-medium text-sm text-gray-900">
                               {payload[0].payload.accountCounts}
                             </span>
@@ -299,19 +321,23 @@ export const MccAccountPage = () => {
                     }
                     return null;
                   }}
-                  contentStyle={{
-                    background: 'transparent',
-                    border: 'none',
-                    boxShadow: 'none',
-                    padding: 0
-                  }}
                 />
+                <defs>
+                  <linearGradient id="colorQs" x1="0" y1="0" x2="0" y2="1">
+                    {/* <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/> */}
+                    <stop offset="0" stopColor="#3b82f6" stopOpacity={1} />
+                    <stop offset={off} stopColor="#3b82f6" stopOpacity={0.1} />
+                    <stop offset={off} stopColor="red" stopOpacity={0.1} />
+                    <stop offset="1" stopColor="red" stopOpacity={1} />
+                  </linearGradient>
+                </defs>
                 <Area
                   type="monotone"
                   dataKey="qs"
                   stroke="#3b82f6"
-                  fill="#93c5fd"
-                  fillOpacity={0.5}
+                  fillOpacity={1}
+                  fill="url(#colorQs)"
                   strokeWidth={2}
                   dot={false}
                   activeDot={{ r: 6, stroke: '#2563eb', strokeWidth: 2 }}

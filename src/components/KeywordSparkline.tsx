@@ -112,8 +112,8 @@ export const KeywordSparkline: React.FC<KeywordSparklineProps> = ({
               dot={false}
               strokeWidth={2}
             />
-            <XAxis dataKey="date" hide />
-            <YAxis hide domain={[0, 10]} />
+            <XAxis dataKey="date" hide/>
+            <YAxis  domain={[0, 10]} hide/>
             <Tooltip
               contentStyle={{ fontSize: '12px' }}
               formatter={(value: number) => [`${value.toFixed(1)}`, 'QS']}

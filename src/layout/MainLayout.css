@@ -6,11 +6,14 @@
   --text-color: #1f2937;
   --text-secondary: #6b7280;
   --border-color: #e5e7eb;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
   --hover-bg: #f3f4f6;
-  --header-bg: #ffffff;
-  --sidebar-bg: #f9fafb;
+  --header-bg: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #1e4ed8 100%);
+  --sidebar-bg: linear-gradient(180deg, #1e3a8a 0%, #1e40af 100%);
+  --content-bg: #ffffff;
   --sidebar-width: 280px;
   --transition-speed: 0.2s;
+  --header-height: 64px;
 }
 
 /* Dark theme variables */
@@ -44,9 +47,7 @@ html, body, #root {
 .app {
   display: flex;
   min-height: 100vh;
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  transition: background-color var(--transition-speed), color var(--transition-speed);
+  color: white;
 }
 
 /* Sidebar container */
@@ -56,15 +57,17 @@ html, body, #root {
   position: fixed;
   left: 0;
   top: 0;
-  background-color: var(--sidebar-bg);
-  border-right: 1px solid var(--border-color);
-  transition: transform var(--transition-speed);
   z-index: 1000;
   overflow-y: auto;
-  display: none;
+  transform: translateX(-100%);
+  transition: transform var(--transition-speed) ease-in-out;
+  will-change: transform;
+  background: var(--sidebar-bg);
 }
-.sidebar-container.open{
-  display: block;
+
+.sidebar-container.open {
+  transform: translateX(0);
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
 /* Main content area */
@@ -74,7 +77,6 @@ html, body, #root {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  transition: margin-left var(--transition-speed);
   width: calc(100% - var(--sidebar-width));
 }
 
@@ -84,25 +86,27 @@ html, body, #root {
   width: 100%;
 }
 
+/* For dark theme */
+[data-theme="dark"] .main-content {
+  background: #1f2937;
+}
+
 /* Content area */
 .content {
   flex: 1;
-  padding: 1.5rem;
   overflow-y: auto;
-  background-color: var(--bg-color);
   width: 100%;
+  color: var(--text-color);
 }
 
 /* Responsive styles */
 @media (max-width: 768px) {
   .sidebar-container {
-    transform: translateX(-100%);
-  }
-
-  .sidebar-container.open {
     transform: translateX(0);
   }
+}
 
+@media (max-width: 768px) {
   .main-content {
     margin-left: 0 !important;
     width: 100% !important;

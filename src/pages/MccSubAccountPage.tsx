@@ -10,7 +10,6 @@ import type {
   AccountScoreDto,
   CampaignScoreDto
 } from '../types/api.types';
-
 // Define types for chart data
 interface ChartDataPoint {
   date: string;
@@ -29,21 +28,6 @@ import {
 } from 'recharts';
 import { CampaignSparkline } from '../components/CampaignSparkline';
 
-const StatusBadge = ({ status }: { status: string }) => {
-  const statusMap: Record<string, { bg: string; text: string }> = {
-    ENABLED: { bg: 'bg-green-100', text: 'text-green-800' },
-    PAUSED: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
-    REMOVED: { bg: 'bg-red-100', text: 'text-red-800' },
-  };
-
-  const statusStyle = statusMap[status] || { bg: 'bg-gray-100', text: 'text-gray-800' };
-
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}>
-      {status}
-    </span>
-  );
-};
 
 
 const getStatusVariant = (status: string) => {
@@ -100,6 +84,20 @@ const MccSubAccountPage: React.FC = () => {
   const account = useMemo(() => {
     return accountResponse?.data;
   }, [accountResponse]);
+
+  // Status variables
+  const statusColor = account?.status === 'ENABLED' ? 'bg-green-500' :
+    account?.status === 'PAUSED' ? 'bg-yellow-500' : 'bg-red-500';
+  const getTooltip = (status: string, type: "account" | "campaign") => {
+    switch (status) {
+      case 'ENABLED': return type === 'account' ? 'Account is active' : 'Campaign is active';
+      case 'PAUSED': return type === 'account' ? 'Account is paused' : 'Campaign is paused';
+      case 'REMOVED': return type === 'account' ? 'Account is removed' : 'Campaign is removed';
+      default: return '';
+    }
+  };
+  const statusText = account?.status === 'ENABLED' ? 'text-green-600' :
+    account?.status === 'PAUSED' ? 'text-yellow-600' : 'text-red-600';
 
   // Process and format scores data for the chart
   const { scores, scoreMap } = useMemo<{ scores: ChartDataPoint[]; scoreMap: Map<string, { qs: number, campaignCount: number }> }>(() => {
@@ -263,299 +261,288 @@ const MccSubAccountPage: React.FC = () => {
 
   // Main content
   return (
-    <div className='min-h-screen bg-gray-50'>
-
-      <div className="p-6 max-w-7xl mx-auto">
+    <div className='min-h-screen bg-gray-50 p-6'>
+      <div className="max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {account?.name || 'Sub Account'}
-          </h1>
-          <p className="text-sm text-gray-500">
-            Account ID: {account?.accountId || 'N/A'}
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {account?.name || 'Sub Account'}
+                </h1>
+                {account?.status && (
+                  <div className="relative group">
+                    <span
+                      className={`inline-block w-2 h-2 rounded-full ${statusColor}`}
+                      style={{ marginBottom: '0.25rem' }}
+                      title={getTooltip(account?.status, 'account')}
+                    ></span>
+                    <div className={`cursor-pointer absolute z-10 hidden group-hover:block bg-gray-200 ${statusText} text-xs rounded px-3 py-2 -mt-8 -ml-2`}>
+                      {getTooltip(account?.status, 'account')}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                Account ID: {account?.accountId || 'N/A'}
+              </p>
 
-          {/* <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <span>Refresh</span>
-            <button
-              onClick={handleRefresh}
-              disabled={isRefreshing || isLoadingAccount || isLoadingScores || isLoadingCampaigns}
-              className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50"
-              title="Refresh data"
-            >
-              <FiRefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </button>
+              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mt-2">
+                <div className="flex items-center">
+                  <span className="font-medium">Quality Score: </span>
+                  <span className={`ml-1 font-semibold ${avgQs >= 7 ? 'text-green-600' : avgQs >= 4 ? 'text-yellow-600' : 'text-red-600'}`}>
+                    {avgQs.toFixed(1)}/10
+                  </span>
+                </div>
+                <div className="h-4 w-px bg-gray-300"></div>
+                <div>
+                  <span className="font-medium">Campaigns: </span>
+                  <span className="font-semibold">{campaignCount}</span>
+                </div>
+              </div>
+            </div>
           </div>
-
-        </div> */}
         </div>
 
-        {/* Content */}
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {/* Quality Score Card */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <p className="text-sm font-medium text-gray-500">Quality Score</p>
-              <div className="flex items-baseline mt-1">
-                <span className={`text-3xl font-bold ${scores?.[scores.length - 1]?.qs >= 7 ? 'text-green-600' : scores?.[scores.length - 1]?.qs >= 4 ? 'text-yellow-600' : 'text-red-600'}`}>
-                  {scores?.[scores.length - 1]?.qs?.toFixed(1) || 'N/A'}
-                </span>
-                <span className="ml-2 text-sm text-gray-500">/ 10</span>
-              </div>
-            </div>
-
-            {/* Status Card */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <p className="text-sm font-medium text-gray-500">Status</p>
-              <div className="flex items-center mt-1">
-                <span className={`inline-block w-2 h-2 rounded-full mr-2 ${account?.status === 'ENABLED' ? 'bg-green-500' :
-                  account?.status === 'PAUSED' ? 'bg-yellow-500' : 'bg-red-500'}`}></span>
-                <span className="text-lg font-medium text-gray-900 capitalize">
-                  {account?.status || 'UNKNOWN'}
-                </span>
-              </div>
-            </div>
-
-            {/* Campaigns Card */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <p className="text-sm font-medium text-gray-500">Campaigns</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">
-                {campaignCount}
-              </p>
+        {/* Quality Score Trend */}
+        <div className="bg-white p-6 rounded-lg shadow mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">Quality Score Trend</h3>
+            <div className="inline-flex rounded-md shadow-sm mt-2 sm:mt-0" role="group">
+              {TIME_RANGES.map((days, index) => (
+                <button
+                  key={days}
+                  type="button"
+                  onClick={() => setTimeRange(days)}
+                  className={`px-3 py-1.5 text-sm font-medium ${timeRange === days
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                    } ${index === 0 ? 'rounded-l-md' : ''} ${index === TIME_RANGES.length - 1 ? 'rounded-r-md' : ''
+                    } border border-gray-300`}
+                >
+                  {days === 365 ? '1y' : `${days}d`}
+                </button>
+              ))}
             </div>
           </div>
-
-          {/* Quality Score Trend */}
-          <div className="bg-white p-6 rounded-lg shadow mb-8">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">Quality Score Trend</h3>
-              <div className="inline-flex rounded-md shadow-sm mt-2 sm:mt-0" role="group">
-                {TIME_RANGES.map((days, index) => (
-                  <button
-                    key={days}
-                    type="button"
-                    onClick={() => setTimeRange(days)}
-                    className={`px-3 py-1.5 text-sm font-medium ${timeRange === days
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                      } ${index === 0 ? 'rounded-l-md' : ''} ${index === TIME_RANGES.length - 1 ? 'rounded-r-md' : ''
-                      } border border-gray-300`}
-                  >
-                    {days === 365 ? '1y' : `${days}d`}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="h-64">
-              {scores.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={scores}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fontSize: 12, fill: '#6b7280' }}
-                      tickLine={false}
-                      axisLine={{ stroke: '#e5e7eb' }}
-                      tickMargin={10}
-                    />
-                    <YAxis
-                      domain={[0, 10]}
-                      tickCount={6}
-                      tick={{ fontSize: 12, fill: '#6b7280' }}
-                      tickLine={false}
-                      axisLine={false}
-                      width={30}
-                    />
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const qsValue = Number(payload[0].value);
-                          const displayQs = qsValue.toFixed(1);
-                          return (
-                            <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-100">
-                              <p className="text-sm font-medium text-gray-500">
-                                {payload[0].payload.date}
-                              </p>
-                              <p className="mt-1 text-lg font-semibold">
-                                <span className={qsValue >= 7 ? 'text-green-600' : qsValue >= 4 ? 'text-yellow-600' : 'text-red-600'}>
-                                  {displayQs}
-                                </span>
-                                <span className="text-gray-500 text-sm ml-1">/ 10</span>
-                              </p>
-                              <p className="text-xs text-gray-500 mt-1">
-                                {payload[0].payload.campaignCount} campaigns
-                              </p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                      cursor={{ stroke: '#e5e7eb', strokeWidth: 1, strokeDasharray: '3 3' }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="qs"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      dot={false}
-                      activeDot={{ r: 5, stroke: '#1d4ed8', strokeWidth: 2, fill: '#3b82f6' }}
-                    />
-                    <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" />
-                    <ReferenceLine y={4} stroke="#ef4444" strokeDasharray="3 3" />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full bg-gray-50 rounded">
-                  <p className="text-gray-500">No quality score data available</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Campaigns Table */}
-          <div className='bg-white p-6 rounded-lg shadow mb-8'>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Campaigns</h3>
-            </div>
-
-            {isLoadingCampaigns ? (
-              <div className="p-6 text-center">Loading campaigns...</div>
-            ) : campaigns.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
-                        Campaign
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/3">
-                        QS Trend
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
-                        Avg QS
-                      </th>
-                    </tr>
-
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {campaigns.map((campaign) => {
-
-                      const now = new Date();
-                      const startDate = subDays(now, timeRange - 1);
-                      // Process scores for the current time range
-                      const validScores = (Array.isArray(campaign.scores) ? campaign.scores : [])
-                        .map(score => {
-                          try {
-                            if (!score || typeof score !== 'object') return null;
-
-                            // Ensure score has required properties
-                            if (typeof score.date !== 'string' || score.qs === undefined) {
-                              return null;
-                            }
-
-                            // Parse and validate date
-                            const scoreDate = parse(score.date, 'dd.MM.yyyy', new Date());
-                            if (!isValid(scoreDate)) {
-                              return null;
-                            }
-
-                            // Parse and validate QS value
-                            const qsValue = typeof score.qs === 'number'
-                              ? score.qs
-                              : parseFloat(score.qs);
-
-                            if (isNaN(qsValue) || qsValue < 0) {
-                              return null;
-                            }
-
-                            // Create a valid score object with all required fields
-                            return {
-                              id: score.id || 0,
-                              campaignId: score.campaignId || campaign.id,
-                              date: format(scoreDate, 'dd.MM.yyyy'),
-                              qs: qsValue,
-                              adGroupCount: score.adGroupCount || 0
-                            } as CampaignScoreDto;
-                          } catch (e) {
-                            return null;
-                          }
-                        })
-                        .filter((score): score is CampaignScoreDto => score !== null);
-
-                      // Calculate average QS and trend
-                      const nonZeroScores = validScores.filter(score => score.qs > 0);
-                      const avgQs = nonZeroScores.length > 0
-                        ? nonZeroScores.reduce((sum, score) => sum + score.qs, 0) / nonZeroScores.length
-                        : 0;
-
-                      // Calculate trend percentage
-                      let trendPercentage = 0;
-                      if (validScores.length >= 2) {
-                        const firstScore = validScores[0]?.qs || 0;
-                        const lastScore = validScores[validScores.length - 1]?.qs || 0;
-                        trendPercentage = firstScore !== 0
-                          ? ((lastScore - firstScore) / firstScore) * 100
-                          : 0;
-                      }
-
-                      return (
-                        <tr
-                          key={campaign.id}
-                          className="hover:bg-gray-50 cursor-pointer"
-                          onClick={() => navigate(`/accounts/${subAccountId}/campaigns/${campaign.id}`)}
-                        >
-                          <td className="px-6 py-4 w-1/6">
-                            <div className="flex items-center gap-3">
-                              <span className='text-sm font-medium text-gray-900'>{campaign.name}</span>
-                              <StatusBadge status={campaign.status} />
-                            </div>
-                            <div className="text-xs text-gray-500 pt-1">ID: {campaign.id}</div>
-                          </td>
-                          <td className="px-6 py-4 w-1/2">
-                            <div className="h-10">
-                              <CampaignSparkline
-                                scores={validScores}
-                                timeRange={timeRange}
-                                width="100%"
-                                height={40}
-                              />
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 w-1/6">
-                            <div className="flex items-center">
-                              <span
-                                className={`px-3 py-1 rounded-full text-sm font-medium ${avgQs >= 7
-                                  ? 'bg-green-100 text-green-800'
-                                  : avgQs >= 4
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : 'bg-red-100 text-red-800'
-                                  }`}
-                              >
-                                {avgQs.toFixed(1)}
+          <div className="h-64">
+            {scores.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={scores}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 12, fill: '#6b7280' }}
+                    tickLine={false}
+                    axisLine={{ stroke: '#e5e7eb' }}
+                    tickMargin={10}
+                  />
+                  <YAxis
+                    domain={[0, 10]}
+                    tickCount={6}
+                    tick={{ fontSize: 12, fill: '#6b7280' }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={30}
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const qsValue = Number(payload[0].value);
+                        const displayQs = qsValue.toFixed(1);
+                        return (
+                          <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-100">
+                            <p className="text-sm font-medium text-gray-500">
+                              {payload[0].payload.date}
+                            </p>
+                            <p className="mt-1 text-lg font-semibold">
+                              <span className={qsValue >= 7 ? 'text-green-600' : qsValue >= 4 ? 'text-yellow-600' : 'text-red-600'}>
+                                {displayQs}
                               </span>
-                              {validScores.length > 1 && (
-                                <span className={`ml-2 text-sm ${trendPercentage >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {trendPercentage >= 0 ? '↑' : '↓'} {Math.abs(trendPercentage).toFixed(1)}%
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                              <span className="text-gray-500 text-sm ml-1">/ 10</span>
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {payload[0].payload.campaignCount} campaigns
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                    cursor={{ stroke: '#e5e7eb', strokeWidth: 1, strokeDasharray: '3 3' }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="qs"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 5, stroke: '#1d4ed8', strokeWidth: 2, fill: '#3b82f6' }}
+                  />
+                  <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" />
+                  <ReferenceLine y={4} stroke="#ef4444" strokeDasharray="3 3" />
+                </LineChart>
+              </ResponsiveContainer>
             ) : (
-              <div className="p-6 text-center text-gray-500">
-                No campaigns found for this account.
+              <div className="flex items-center justify-center h-full bg-gray-50 rounded">
+                <p className="text-gray-500">No quality score data available</p>
               </div>
             )}
           </div>
         </div>
+
+        {/* Campaigns Table */}
+        <div className='bg-white p-6 rounded-lg shadow mb-8'>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Campaigns</h3>
+          </div>
+
+          {isLoadingCampaigns ? (
+            <div className="p-6 text-center">Loading campaigns...</div>
+          ) : campaigns.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                      Campaign
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/3">
+                      QS Trend
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                      Avg QS
+                    </th>
+                  </tr>
+
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {campaigns.map((campaign) => {
+
+                    const now = new Date();
+                    const startDate = subDays(now, timeRange - 1);
+                    // Process scores for the current time range
+                    const validScores = (Array.isArray(campaign.scores) ? campaign.scores : [])
+                      .map(score => {
+                        try {
+                          if (!score || typeof score !== 'object') return null;
+
+                          // Ensure score has required properties
+                          if (typeof score.date !== 'string' || score.qs === undefined) {
+                            return null;
+                          }
+
+                          // Parse and validate date
+                          const scoreDate = parse(score.date, 'dd.MM.yyyy', new Date());
+                          if (!isValid(scoreDate)) {
+                            return null;
+                          }
+
+                          // Parse and validate QS value
+                          const qsValue = typeof score.qs === 'number'
+                            ? score.qs
+                            : parseFloat(score.qs);
+
+                          if (isNaN(qsValue) || qsValue < 0) {
+                            return null;
+                          }
+
+                          // Create a valid score object with all required fields
+                          return {
+                            id: score.id || 0,
+                            campaignId: score.campaignId || campaign.id,
+                            date: format(scoreDate, 'dd.MM.yyyy'),
+                            qs: qsValue,
+                            adGroupCount: score.adGroupCount || 0
+                          } as CampaignScoreDto;
+                        } catch (e) {
+                          return null;
+                        }
+                      })
+                      .filter((score): score is CampaignScoreDto => score !== null);
+
+                    // Calculate average QS and trend
+                    const nonZeroScores = validScores.filter(score => score.qs > 0);
+                    const avgQs = nonZeroScores.length > 0
+                      ? nonZeroScores.reduce((sum, score) => sum + score.qs, 0) / nonZeroScores.length
+                      : 0;
+
+                    // Calculate trend percentage
+                    let trendPercentage = 0;
+                    if (validScores.length >= 2) {
+                      const firstScore = validScores[0]?.qs || 0;
+                      const lastScore = validScores[validScores.length - 1]?.qs || 0;
+                      trendPercentage = firstScore !== 0
+                        ? ((lastScore - firstScore) / firstScore) * 100
+                        : 0;
+                    }
+
+                    return (
+                      <tr
+                        key={campaign.id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => navigate(`/accounts/${subAccountId}/campaigns/${campaign.id}`)}
+                      >
+                        <td className="px-6 py-4 w-1/6">
+                          <div className="flex items-center gap-3">
+                            <span className='text-sm font-medium text-gray-900'>{campaign.name}</span>
+                            <div className="relative group">
+                              <span
+                                className={`inline-block w-2 h-2 rounded-full ${statusColor}`}
+                                style={{ marginBottom: '0.25rem' }}
+                                title={getTooltip(campaign.status, 'campaign')}
+                              ></span>
+                              <div className={`cursor-pointer absolute z-10 hidden group-hover:block bg-gray-200 ${statusText} text-xs rounded px-3 py-2 -mt-8 -ml-2`}>
+                                {getTooltip(campaign.status, 'campaign')}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-xs text-gray-500 pt-1">ID: {campaign.id}</div>
+                        </td>
+                        <td className="px-6 py-4 w-1/2">
+                          <div className="h-10">
+                            <CampaignSparkline
+                              scores={validScores}
+                              timeRange={timeRange}
+                              width="100%"
+                              height={40}
+                            />
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 w-1/6">
+                          <div className="flex items-center">
+                            <span
+                              className={`px-3 py-1 rounded-full text-sm font-medium ${avgQs >= 7
+                                ? 'bg-green-100 text-green-800'
+                                : avgQs >= 4
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-red-100 text-red-800'
+                                }`}
+                            >
+                              {avgQs.toFixed(1)}
+                            </span>
+                            {validScores.length > 1 && (
+                              <span className={`ml-2 text-sm ${trendPercentage >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {trendPercentage >= 0 ? '↑' : '↓'} {Math.abs(trendPercentage).toFixed(1)}%
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-6 text-center text-gray-500">
+              No campaigns found for this account.
+            </div>
+          )}
+        </div>
       </div>
+    </div>
   );
 
 };

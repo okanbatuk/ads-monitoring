@@ -1,12 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useKeyword, useKeywordScores, useAdGroupKeywords } from '../services/api';
 import KeywordSparkline from '../components/KeywordSparkline';
-import { format, parse, startOfWeek, addDays, subDays, isWithinInterval } from 'date-fns';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts';
-import { FiArrowLeft } from 'react-icons/fi';
-import { KeywordDto, KeywordScoreDto } from '../types/api.types';
-import ScrollToTopButton from '../components/ScrollToTopButton';
+import { format, parse, startOfWeek } from 'date-fns';
+import { ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, AreaChart, Area} from 'recharts';
 
 // Types
 interface ChartDataPoint {
@@ -47,7 +44,6 @@ const KeywordPage: React.FC = () => {
   // Fetch keyword data
   const { data: keywordData, isLoading: isLoadingKeyword } = useKeyword(keywordId || '');
   const keyword = keywordData?.data;
-  const keywordText = keyword?.keyword || 'Keyword';
 
   // Fetch keywords for the ad group
   const { data: keywordsData, isLoading: isLoadingKeywords } = useAdGroupKeywords(adGroupId, {
@@ -102,17 +98,23 @@ const KeywordPage: React.FC = () => {
       // Convert week groups to chart data points
       return Array.from(weekGroups.entries())
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([weekStart, { sum, count }]) => ({
-          date: format(new Date(weekStart), 'MMM d'),
-          qs: count > 0 ? sum / count : 0 // Weekly average
-        }));
+        .map(([weekStart, { sum, count }]) => {
+          const weekDate = new Date(weekStart);
+          const displayDate = format(weekDate, timeRange <= 364 ? 'MMM d' : 'MMM d, yyyy');
+          return {
+            axisDate: displayDate,
+            date: weekStart,
+            qs: count > 0 ? sum / count : 0 // Weekly average
+          };
+        });
     } else {
       // For 7-30 days, show daily data
       return dateArray.map(date => {
         const dateStr = format(date, 'yyyy-MM-dd');
-        const displayDate = format(date, timeRange <= 14 ? 'MMM d' : 'd MMM');
+        const displayDate = format(date, timeRange <= 364 ? 'MMM d' : 'MMM d, yyyy');
         return {
-          date: displayDate,
+          axisDate: displayDate,
+          date: dateStr,
           qs: scoreMap.get(dateStr) || 0
         };
       });
@@ -140,15 +142,85 @@ const KeywordPage: React.FC = () => {
 
   const timeRanges = [7, 30, 90, 365];
 
+  // Calculate gradient offset based on data range
+  const gradientOffset = () => {
+    if (!chartData || chartData.length === 0) return 0.5;
+    
+    const vals = chartData.map(d => d.qs).filter(qs => !isNaN(qs));
+    if (vals.length === 0) return 0.5;
+    
+    const dataMax = Math.max(...vals);
+    const dataMin = Math.min(...vals);
+    
+    if (dataMax <= 0) return 0;      // All values are low (red)
+    if (dataMin >= 0) return 1;      // All values are high (blue)
+    
+    // Calculate position of value 7 in the data range
+    const range = dataMax - dataMin;
+    return dataMax / range;
+  };
+
+  const off = gradientOffset();
+
+  // Calculate average QS
+  const avgQs = chartData.length > 0
+    ? chartData.reduce((sum, data) => sum + data.qs, 0) / chartData.length
+    : 0;
+
+  // Get the latest score or default to 0
+  const latestScore = chartData?.[chartData.length - 1]?.qs || 0;
+  const scoreColor = latestScore >= 7 ? 'text-green-600' : latestScore >= 4 ? 'text-yellow-600' : 'text-red-600';
+  
+  // Safely access keyword properties with optional chaining and provide defaults
+  const status = keyword?.status || 'UNKNOWN';
+  const statusColor = status === 'ENABLED' ? 'bg-green-500' :
+    status === 'PAUSED' ? 'bg-yellow-500' : 'bg-red-500';
+  const statusTooltip = status === 'ENABLED' ? 'Keyword is active' :
+    status === 'PAUSED' ? 'Keyword is paused' : 'Status unknown';
+  const statusText = status === 'ENABLED' ? 'text-green-600' :
+    status === 'PAUSED' ? 'text-yellow-600' : 'text-gray-600';
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6 relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex justify-between items-start">
-            <div className='flex items-center gap-2'>
-              <h1 className="text-2xl font-bold text-gray-900">{keyword.keyword}</h1>
-              <StatusBadge status={keyword.status} />
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header Section */}
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {keyword?.keyword || 'Keyword'}
+                </h1>
+                <div className="relative group">
+                  <span
+                    className={`inline-block w-2 h-2 rounded-full ${statusColor}`}
+                    style={{ marginBottom: '0.25rem' }}
+                    title={statusTooltip}
+                  ></span>
+                  <div className={`cursor-pointer absolute z-10 hidden group-hover:block bg-gray-200 ${statusText} text-xs rounded px-3 py-2 -mt-8 -ml-2`}>
+                    {statusTooltip}
+                  </div>
+                </div>
+              </div>
+              {keyword?.id && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Keyword ID: {keyword.id}
+                </p>
+              )}
+
+              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                <div className="flex items-center">
+                  <span className="font-medium">Quality Score: </span>
+                  <span className={`ml-1 font-semibold ${scoreColor}`}>
+                    {latestScore.toFixed(1)}/10
+                  </span>
+                </div>
+                <div className="h-4 w-px bg-gray-300"></div>
+                <div>
+                  <span className="font-medium">Average QS: </span>
+                  <span className="font-semibold">{avgQs.toFixed(1)}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -178,24 +250,24 @@ const KeywordPage: React.FC = () => {
               <SkeletonLoader className="h-full w-full" />
             ) : chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart
+                <AreaChart
                   data={chartData}
-                  margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                   <XAxis
-                    dataKey="date"
+                    dataKey="axisDate"
                     tick={{ fontSize: 12 }}
                     tickLine={false}
-                    axisLine={{ stroke: '#e5e7eb' }}
-                    padding={{ left: 20, right: 20 }}
+                    axisLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
+                    tickMargin={10}
                   />
                   <YAxis
                     domain={[0, 10]}
                     tickCount={6}
                     tick={{ fontSize: 12 }}
                     tickLine={false}
-                    axisLine={false}
+                    axisLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
                     width={30}
                   />
                   <Tooltip
@@ -204,17 +276,19 @@ const KeywordPage: React.FC = () => {
                         const qsValue = Number(payload[0].value);
                         const displayQs = qsValue.toFixed(1);
                         return (
-                          <div
-                            className="space-y-1.5 p-3 rounded-lg bg-gray/65 backdrop-blur-sm border border-gray-100 shadow-sm"
-                            style={{
-                              boxShadow: '0 4px 20px -5px rgba(0, 0, 0, 0.05)'
-                            }}
-                          >
+                          <div className="space-y-1.5 p-2 rounded-lg bg-white border border-gray-200 shadow-md">
+                            <div>
+                              <span className="font-semibold text-sm">
+                                {format(new Date(payload[0].payload.date), 'MMM d, yyyy')}
+                              </span>
+                            </div>
                             <div className="flex items-center justify-between space-x-4">
-                              <span className="text-gray-600 text-xs">Quality Score:</span>{' '}
-                              <span className={`font-medium ${qsValue >= 8 ? 'text-green-600' :
-                                qsValue >= 5 ? 'text-yellow-600' : 'text-red-600'
-                                }`}>
+                              <span className="text-gray-500 text-xs">Quality Score</span>
+                              <span className={`font-medium text-sm ${qsValue >= 8 
+                                ? 'text-green-600' 
+                                : qsValue >= 5 
+                                  ? 'text-yellow-600' 
+                                  : 'text-red-600'}`}>
                                 {displayQs}
                               </span>
                             </div>
@@ -225,22 +299,25 @@ const KeywordPage: React.FC = () => {
 
                     }}
                   />
-                  <Line
+                  <defs>
+                    <linearGradient id="colorQs" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0" stopColor="#93c5fd" stopOpacity={1} />
+                      <stop offset={off} stopColor="#3b82f6" stopOpacity={0.1} />
+                    </linearGradient>
+                  </defs>
+                  <Area
                     type="monotone"
                     dataKey="qs"
                     stroke="#3b82f6"
+                    fillOpacity={1}
+                    fill="url(#colorQs)"
                     strokeWidth={2}
                     dot={false}
-                    activeDot={{
-                      r: 6,
-                      fill: '#3b82f6',
-                      stroke: '#fff',
-                      strokeWidth: 2
-                    }}
+                    activeDot={{ r: 6, stroke: '#2563eb', strokeWidth: 2 }}
                   />
                   <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" />
-                  <ReferenceLine y={4} stroke="#f59e0b" strokeDasharray="3 3" />
-                </LineChart>
+                  <ReferenceLine y={4} stroke="#ef4444" strokeDasharray="3 3" />
+                </AreaChart>
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center text-gray-500">
