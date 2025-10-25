@@ -1,5 +1,5 @@
 import React, { createContext, useContext, ReactNode } from 'react';
-import { useAccountTree, type UseAccountTreeReturn } from '@/hooks/useAccountTree';
+import { useAccountTree, type UseAccountTreeReturn } from '../hooks/useAccountTree';
 
 const AccountTreeContext = createContext<UseAccountTreeReturn | undefined>(undefined);
 

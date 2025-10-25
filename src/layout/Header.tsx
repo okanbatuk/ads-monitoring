@@ -14,7 +14,7 @@ export default function Header({ isOpen, onToggleSidebar }: HeaderProps) {
 
   return (
     <header className="header">
-      <div className='flex items-center gap-2'>
+      <div className='flex items-center gap-4'>
         <button
           className="menu-button"
           onClick={onToggleSidebar}

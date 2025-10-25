@@ -1,27 +1,25 @@
-import React, { useState, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiArrowUpRight, FiArrowDownRight } from "react-icons/fi";
+import { addDays, format, parse, startOfWeek, subDays } from "date-fns";
+import { useMemo, useState } from "react";
+import { FiArrowDownRight, FiArrowUpRight } from "react-icons/fi";
+import { useNavigate, useParams } from "react-router-dom";
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-  AreaChart,
-  Area,
+    Area,
+    AreaChart,
+    CartesianGrid,
+    Line,
+    LineChart,
+    ReferenceLine,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
 } from "recharts";
-import {
-  useCampaign,
-  useCampaignScores,
-  useCampaignAdGroups,
-  useAdGroupScores,
-} from "../services";
 import { AdGroupSparkline } from "../components/AdGroupSparkline";
-import { CampaignDto, CampaignScoreDto } from "../types/api.types";
-import { format, startOfWeek, subDays, addDays, parse } from "date-fns";
+import {
+    useCampaign,
+    useCampaignAdGroups,
+    useCampaignScores,
+} from "../services";
 
 // Skeleton Loader Component
 const SkeletonLoader = ({
@@ -64,12 +62,6 @@ const StatusBadge = ({ status }: { status: string }) => {
     </span>
   );
 };
-
-// Define chart data type
-interface ChartDataPoint {
-  date: string;
-  qs: number;
-}
 
 const CampaignPage = () => {
   const { campaignId } = useParams<{ campaignId: string }>();

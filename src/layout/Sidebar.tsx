@@ -1,14 +1,12 @@
-// src/components/Sidebar.tsx
-import { useLocation, useNavigate } from 'react-router-dom';
-import { type TreeNode } from '@/hooks/useAccountTree';
-import { FiChevronDown, FiChevronRight, FiLoader } from 'react-icons/fi';
-import { useFlatTree } from '@/hooks/useFlatTree';
+import { Search, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { FiChevronDown, FiChevronRight, FiLoader } from "react-icons/fi";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAccountTreeContext } from "../context/AccountTreeContext";
+import { useTheme } from "../contexts/ThemeProvider";
+import { type TreeNode } from "../hooks/useAccountTree";
+import { useFlatTree } from "../hooks/useFlatTree";
 import "./Sidebar.css";
-import { useMemo, useRef } from 'react';
-import { useAccountTreeContext } from '@/context/AccountTreeContext';
-import { useTheme } from '@/contexts/ThemeProvider';
-import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, Search, X } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -19,7 +17,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const { expandedNodes } = useAccountTreeContext();
@@ -28,23 +26,27 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   // Handle click outside to close search
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (isSearchOpen && searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+      if (
+        isSearchOpen &&
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target as Node)
+      ) {
         handleCloseSearch();
       }
     }
 
     // Handle Escape key
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape' && isSearchOpen) {
+      if (event.key === "Escape" && isSearchOpen) {
         handleCloseSearch();
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isSearchOpen]);
 
@@ -59,31 +61,29 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
 
   const handleCloseSearch = () => {
     setIsSearchOpen(false);
-    setSearchQuery('');
+    setSearchQuery("");
   };
 
-  const { flatNodes: originalFlatNodes, isNodeLoading, loadChildren, toggleNode } = useFlatTree();
+  const {
+    flatNodes: originalFlatNodes,
+    isNodeLoading,
+    toggleNode,
+  } = useFlatTree();
   const { theme } = useTheme();
 
   const flatNodes = useMemo(() => {
     if (!searchQuery.trim()) {
       return originalFlatNodes;
     }
-    
+
     const query = searchQuery.toLowerCase().trim();
-    return originalFlatNodes.filter(({ node }) => 
-      node.name.toLowerCase().includes(query) ||
-      (node.path && node.path.toLowerCase().includes(query))
+    console.log(expandedNodes);
+    return originalFlatNodes.filter(
+      ({ node }) =>
+        node.name.toLowerCase().includes(query) ||
+        (node.path && node.path.toLowerCase().includes(query)),
     );
   }, [originalFlatNodes, expandedNodes, searchQuery]);
-
-  const handleRowClick = (node: TreeNode, isChevron: boolean) => {
-    if (isChevron) {
-      toggleNode(node.id);
-    } else if (node.path) {
-      navigate(node.path);
-    }
-  };
 
   // Focus search input when search is opened
   useEffect(() => {
@@ -96,7 +96,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   useEffect(() => {
     if (!isOpen) {
       setIsSearchOpen(false);
-      setSearchQuery('');
+      setSearchQuery("");
     }
   }, [isOpen]);
 
@@ -105,28 +105,43 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   // Determine if the current route is active
   const isActive = (path: string | undefined) => {
     if (!path) return false;
-    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+    const agPart = path.match(/\/adgroups\/(\d+)/)?.[0];
+    return (
+      location.pathname === path ||
+      location.pathname.startsWith(`${path}/`) ||
+      (agPart && location.pathname.includes(agPart))
+    );
   };
 
   const handleContainerClick = (e: React.MouseEvent) => {
     // Only close if clicking directly on the sidebar container, not its children
     const target = e.target as HTMLElement;
-    if (e.target === e.currentTarget && !target.closest('.search-button')) {
+    if (e.target === e.currentTarget && !target.closest(".search-button")) {
       onClose();
     }
   };
 
+  const handleRowClick = (node: TreeNode, isChevron: boolean) => {
+    if (isChevron) {
+      toggleNode(node.id);
+    } else if (node.path) {
+      navigate(node.path);
+    }
+  };
+
   return (
-    <div 
-      className={`sidebar ${theme === 'dark' ? 'dark' : ''}`}
+    <div
+      className={`sidebar ${theme === "dark" ? "dark" : ""}`}
       onClick={handleContainerClick}
     >
       <div className="sidebar-header">
         {/* Logo */}
-        <div className={`logo-container ${isSearchOpen ? 'opacity-0 -translate-x-4' : ''}`}>
-          <span 
-            className='flex items-center gap-2 cursor-pointer'
-            onClick={() => navigate('/')}
+        <div
+          className={`logo-container ${isSearchOpen ? "opacity-0 -translate-x-4" : ""}`}
+        >
+          <span
+            className="flex items-center gap-2 cursor-pointer"
+            onClick={() => navigate("/")}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -135,18 +150,24 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               viewBox="0 0 48 48"
               className="flex-shrink-0"
             >
-              <polygon fill="#ffc107" points="30.129,15.75 18.871,9.25 5.871,31.25 17.129,37.75" />
-              <path fill="#1e88e5" d="M31.871,37.75c1.795,3.109,5.847,4.144,8.879,2.379c3.103-1.806,4.174-5.77,2.379-8.879l-13-22c-1.795-3.109-5.835-4.144-8.879-2.379c-3.106,1.801-4.174,5.77-2.379,8.879L31.871,37.75z" />
+              <polygon
+                fill="#ffc107"
+                points="30.129,15.75 18.871,9.25 5.871,31.25 17.129,37.75"
+              />
+              <path
+                fill="#1e88e5"
+                d="M31.871,37.75c1.795,3.109,5.847,4.144,8.879,2.379c3.103-1.806,4.174-5.77,2.379-8.879l-13-22c-1.795-3.109-5.835-4.144-8.879-2.379c-3.106,1.801-4.174,5.77-2.379,8.879L31.871,37.75z"
+              />
               <circle cx="11.5" cy="34.5" r="6.5" fill="#43a047" />
             </svg>
             <h3>Google Ads</h3>
           </span>
         </div>
-        
+
         {/* Search Input */}
-        <div 
+        <div
           ref={searchContainerRef}
-          className={`search-container ${isSearchOpen ? 'visible' : ''}`}
+          className={`search-container ${isSearchOpen ? "visible" : ""}`}
         >
           <div className="relative w-full">
             <Search className="search-input-icon" />
@@ -158,7 +179,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               placeholder="Search..."
               className="search-input w-full"
             />
-            <button 
+            <button
               onClick={handleCloseSearch}
               className="close-search"
               aria-label="Close search"
@@ -167,12 +188,12 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
             </button>
           </div>
         </div>
-        
+
         {/* Search Button */}
         {showSearchButton && (
-          <button 
+          <button
             onClick={handleSearchClick}
-            className={`search-button ${isSearchOpen ? 'hidden' : ''}`}
+            className={`search-button ${isSearchOpen ? "hidden" : ""}`}
             aria-label="Search"
           >
             <Search className="h-4 w-4" />
@@ -182,10 +203,11 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       <div className="sidebar-content">
         {flatNodes.map(({ node, depth }) => {
           const isNodeActive = isActive(node.path);
+          // const
           return (
             <div
               key={node.id}
-              className={`tree-row flex items-center px-2 py-1 ${isNodeActive ? 'active' : ''}`}
+              className={`tree-row flex items-center px-2 py-1 ${expandedNodes.has(node.id) || isNodeActive ? "active" : ""}`}
               style={{ paddingLeft: `${12 + depth * 16}px` }}
             >
               {/* Chevron - only for expandable nodes */}
@@ -204,7 +226,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                   )}
                 </span>
               ) : (
-                <span className='w-4' />
+                <span className="w-4" />
               )}
 
               {/* Node name - click to navigate */}
@@ -221,8 +243,10 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               {/* Loading spinner or child count */}
               {isNodeLoading(node.id) ? (
                 <FiLoader className="animate-spin ml-2" size={14} />
-              ) : node.hasChildren && node.children?.length !== 0 && expandedNodes.has(node.id) ? (
-                <span className='total-badge'>{node.children?.length}</span>
+              ) : node.hasChildren &&
+                node.children?.length !== 0 &&
+                expandedNodes.has(node.id) ? (
+                <span className="total-badge">{node.children?.length}</span>
               ) : null}
             </div>
           );

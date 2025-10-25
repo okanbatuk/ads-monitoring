@@ -1,18 +1,11 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { fetchApi, useMccAccounts } from "../services/api";
 import type {
   AccountDto,
-  CampaignDto,
   AdGroupDto,
+  CampaignDto,
   GetSubAccountsResponse,
-  GetMccAccountsResponse,
 } from "../types/api.types";
-import {
-  useMccAccounts,
-  useSubAccounts,
-  useAccountCampaigns,
-  useCampaignAdGroups,
-  fetchApi,
-} from "../services/api";
 
 export interface TreeNode {
   id: string;
@@ -116,28 +109,6 @@ export const useAccountTree = (): UseAccountTreeReturn => {
     Record<string, boolean>
   >({});
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
-
-  const fetchSubAccounts = useCallback(async (accountId: string) => {
-    try {
-      setLoadingSubAccounts((prev) => ({ ...prev, [accountId]: true }));
-      const response = await fetchApi<GetSubAccountsResponse>(
-        `/accounts/${accountId}/accounts`,
-      );
-      const subAccounts = response?.data?.subAccounts || [];
-
-      setSubAccountsMap((prev) => ({
-        ...prev,
-        [accountId]: subAccounts,
-      }));
-
-      return subAccounts;
-    } catch (error) {
-      console.error("Error fetching sub-accounts:", error);
-      return [];
-    } finally {
-      setLoadingSubAccounts((prev) => ({ ...prev, [accountId]: false }));
-    }
-  }, []);
 
   // Fetch accounts (MCC or sub-accounts)
   const fetchAccounts = useCallback(
