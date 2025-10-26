@@ -9,7 +9,7 @@
     "@tanstack/react-query-devtools": "^5.90.2",
     "@types/react-toastify": "^4.0.2",
     "axios": "^1.12.2",
-    "date-fns": "^4.1.0",
+    "date-fns": "^3.6.0",
     "lucide-react": "^0.548.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
