@@ -39,7 +39,10 @@ interface ScoreData {
 export const MccAccountPage = () => {
   const { mccId } = useParams<{ mccId: string }>();
   const navigate = useNavigate();
-  const [timeRange, setTimeRange] = useState(7);
+  const [timeRange, setTimeRange] = useState<number>(30);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [showBestAccounts, setShowBestAccounts] = useState(false);
+  const [accountsSearchTerm, setAccountsSearchTerm] = useState("");
   const { theme } = useTheme();
 
   // Fetch data
@@ -142,15 +145,15 @@ export const MccAccountPage = () => {
       const avgQs =
         sortedScores.length > 0
           ? sortedScores.reduce((sum, score) => sum + (score?.qs || 0), 0) /
-            sortedScores.length
+          sortedScores.length
           : 0;
 
       // Calculate QS change if we have at least 2 scores
       let qsChange = 0;
       if (sortedScores.length >= 2) {
-        const firstQs = sortedScores[0]?.qs || 0;
-        const lastQs = sortedScores[sortedScores.length - 1]?.qs || 0;
-        qsChange = firstQs !== 0 ? ((lastQs - firstQs) / firstQs) * 100 : 0;
+        const current = sortedScores[sortedScores.length - 1]?.qs || 0;
+        const previous = sortedScores[sortedScores.length - 2]?.qs || 0;
+        qsChange = previous !== 0 ? ((current - previous) / previous) * 100 : 0;
       }
 
       return {
@@ -161,10 +164,25 @@ export const MccAccountPage = () => {
     });
   }, [subAccounts, timeRange]);
 
+  // Calculate trend
+  const trend = useMemo(() => {
+    const current = scores?.[scores.length - 1]?.qs || 0;
+    const previous = scores?.[scores.length - 2]?.qs || 0;
+    return previous && current ? ((current - previous) / previous) * 100 : 0;
+  }, [scores]);
+
+  // Calculate average QS from non-zero values only
+  const avgQs = (() => {
+    const nonZeroScores = scores.filter(score => score.qs > 0);
+    return nonZeroScores.length > 0
+      ? nonZeroScores.reduce((sum, score) => sum + score.qs, 0) / nonZeroScores.length
+      : 0;
+  })();
+
   if (isLoadingAccount || isLoadingScores || isLoadingSubAccounts) {
     return (
       <div
-        className={`min-h-screen p-6 ${theme === "dark" ? "bg-gray-900" : "bg-gray-50"}`}
+        className={`min-h-screen p-6 ${theme === "light" && "bg-gray-50"}`}
       >
         <div className="max-w-7xl mx-auto">
           <div className="animate-pulse">
@@ -219,9 +237,22 @@ export const MccAccountPage = () => {
   // Process sub-accounts with scores and calculate average QS
 
   // Get bottom 5 sub-accounts by average QS
-  const bottomAccounts = [...processedSubAccounts]
+  const worstAccounts = [...processedSubAccounts]
     .sort((a, b) => a.avgQs - b.avgQs)
     .slice(0, 5);
+
+  // Get top 5 sub-accounts by average QS
+  const bestAccounts = [...processedSubAccounts]
+    .sort((a, b) => b.avgQs - a.avgQs)
+    .slice(0, 5);
+
+  // Dynamic accounts based on toggle state
+  const displayedAccounts = showBestAccounts ? bestAccounts : worstAccounts;
+
+  // Filter accounts by search term for Accounts tab
+  const filteredSubAccounts = processedSubAccounts.filter(subAccount =>
+    accountsSearchTerm.length >= 2 ? subAccount.name.toLowerCase().includes(accountsSearchTerm.toLowerCase()) : true
+  );
 
   // Get the latest score or default to 0
   const latestScore = scores?.[scores.length - 1]?.qs || 0;
@@ -231,6 +262,8 @@ export const MccAccountPage = () => {
       : latestScore >= 4
         ? "text-yellow-600"
         : "text-red-600";
+
+
 
   const getStatusStyle = (status: string): { bg: string; tx: string } => {
     return status === "ENABLED"
@@ -309,10 +342,24 @@ export const MccAccountPage = () => {
                   <span className={`ml-1 font-semibold ${scoreColor}`}>
                     {latestScore.toFixed(1)}/10
                   </span>
+                  {trend !== 0 && (
+                    <span
+                      className={`ml-2 ${trend > 0 ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {trend > 0 ? "↑" : "↓"} {Math.abs(trend).toFixed(1)}%
+                    </span>
+                  )}
                 </div>
                 <div className="h-4 w-px bg-gray-300"></div>
                 <div>
-                  <span className="font-medium">Sub Accounts: </span>
+                  <span className="font-medium">Average Score: </span>
+                  <span className={`font-semibold ${avgQs >= 7 ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') : avgQs >= 4 ? (theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600') : (theme === 'dark' ? 'text-red-400' : 'text-red-600')}`}>
+                    {avgQs.toFixed(1)}/10
+                  </span>
+                </div>
+                <div className="h-4 w-px bg-gray-300"></div>
+                <div>
+                  <span className="font-medium">Accounts: </span>
                   <span className="font-semibold">{subAccounts.length}</span>
                 </div>
               </div>
@@ -320,327 +367,613 @@ export const MccAccountPage = () => {
           </div>
         </div>
 
-        {/* Quality Score Trend */}
-        <div
-          className={`p-6 rounded-lg shadow mb-8 ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}
-        >
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-            <h3
-              className={`text-lg font-semibold mb-4 sm:mb-0 ${theme === "dark" ? "text-white" : ""}`}
+        {/* Tabs */}
+        <div className={`border-b mb-6 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab("overview")}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === "overview"
+                ? `${theme === 'dark' ? 'border-green-500 text-green-400' : 'border-green-500 text-green-600'}`
+                : `${theme === 'dark' ? 'border-transparent text-gray-400 hover:text-green-400 hover:border-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
+                }`}
             >
-              Quality Score Trend
-            </h3>
-            <div className="inline-flex rounded-md shadow-sm" role="group">
-              {TIME_RANGES.map((range, index) => (
-                <button
-                  key={range.days}
-                  type="button"
-                  onClick={() => setTimeRange(range.days)}
-                  className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
-                    timeRange === range.days
-                      ? `${theme === 'dark' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-blue-100 text-blue-700 border-blue-300'}`
-                      : `${theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`
-                  } ${index === 0 ? "rounded-l-md" : ""} ${
-                    index === TIME_RANGES.length - 1 ? "rounded-r-md" : ""
-                  } border`}
-                >
-                  {range.label}
-                </button>
-              ))}
-            </div>
-          </div>
+              Overview
+            </button>
+            <button
+              onClick={() => setActiveTab("accounts")}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === "accounts"
+                ? `${theme === 'dark' ? 'border-green-500 text-green-400' : 'border-green-500 text-green-600'}`
+                : `${theme === 'dark' ? 'border-transparent text-gray-400 hover:text-green-400 hover:border-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
+                }`}
+            >
+              Accounts ({subAccounts.length})
+            </button>
+          </nav>
+        </div>
 
-          <div style={{ height: "300px" }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={scores}
-                margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
+        {/* Date Range Selector */}
+        <div className="flex justify-end items-center mb-6">
+          <div className="inline-flex rounded-md shadow-sm">
+            {TIME_RANGES.map((range, index) => (
+              <button
+                key={range.days}
+                type="button"
+                onClick={() => setTimeRange(range.days)}
+                className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${timeRange === range.days
+                  ? `${theme === 'dark' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-blue-100 text-blue-700 border-blue-300'}`
+                  : `${theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`
+                  } ${index === 0 ? "rounded-l-md" : ""} ${index === TIME_RANGES.length - 1 ? "rounded-r-md" : ""
+                  } border`}
               >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke={theme === "dark" ? "#374151" : "#f0f0f0"}
-                />
-                <XAxis
-                  dataKey="axisDate"
-                  tick={{
-                    fontSize: 12,
-                    fill: theme === "dark" ? "#9ca3af" : "#4b5563",
-                  }}
-                  tickLine={false}
-                  axisLine={{
-                    stroke: theme === "dark" ? "#4b5563" : "#9ca3af",
-                    strokeWidth: 1,
-                  }}
-                  tickMargin={10}
-                />
-                <YAxis
-                  domain={[0, 10]}
-                  tickCount={6}
-                  tick={{
-                    fontSize: 12,
-                    fill: theme === "dark" ? "#9ca3af" : "#4b5563",
-                  }}
-                  tickLine={false}
-                  axisLine={{
-                    stroke: theme === "dark" ? "#4b5563" : "#9ca3af",
-                    strokeWidth: 1,
-                  }}
-                  width={30}
-                />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const qsValue = Number(payload[0].value);
-                      const displayQs = qsValue.toFixed(1);
-                      return (
-                        <div
-                          className={`space-y-1.5 p-2 rounded-lg border shadow-md ${
-                            theme === "dark"
-                              ? "bg-gray-800 border-gray-700"
-                              : "bg-white border-gray-200"
-                          }`}
-                        >
-                          <div>
-                            <span className="font-semibold text-sm">
-                              {format(
-                                new Date(payload[0].payload.date),
-                                "MMM d, yyyy",
-                              )}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between space-x-4">
-                            <span
-                              className={`text-xs ${
-                                theme === "dark"
-                                  ? "text-gray-400"
-                                  : "text-gray-500"
-                              }`}
-                            >
-                              Quality Score
-                            </span>
-                            <span
-                              className={`font-medium text-sm ${
-                                qsValue >= 8
-                                  ? "text-green-600"
-                                  : qsValue >= 5
-                                    ? "text-yellow-600"
-                                    : "text-red-600"
-                              }`}
-                            >
-                              {displayQs}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between space-x-4">
-                            <span
-                              className={`text-xs ${
-                                theme === "dark"
-                                  ? "text-gray-400"
-                                  : "text-gray-600"
-                              }`}
-                            >
-                              Accounts:
-                            </span>
-                            <span
-                              className={`font-medium text-sm ${
-                                theme === "dark"
-                                  ? "text-white"
-                                  : "text-gray-900"
-                              }`}
-                            >
-                              {payload[0].payload.accountCounts}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <defs>
-                  <linearGradient id="colorQs" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stopColor="#3b82f6" stopOpacity={1} />
-                    <stop offset={off} stopColor="#3b82f6" stopOpacity={0.1} />
-                  </linearGradient>
-                </defs>
-                <Area
-                  type="monotone"
-                  dataKey="qs"
-                  stroke="#3b82f6"
-                  fillOpacity={1}
-                  fill="url(#colorQs)"
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 6, stroke: "#2563eb", strokeWidth: 2 }}
-                />
-                <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" />
-                <ReferenceLine y={4} stroke="#ef4444" strokeDasharray="3 3" />
-              </AreaChart>
-            </ResponsiveContainer>
+                {range.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Bottom 5 Sub Accounts */}
-        <div
-          className={`p-6 rounded-lg shadow ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3
-              className={`text-lg font-semibold ${theme === "dark" ? "text-white" : ""}`}
+        {activeTab === "overview" ? (
+          <div className="space-y-6">
+            {/* Quality Score Trend */}
+            <div
+              className={`p-6 rounded-lg shadow mb-8 ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}
             >
-              Bottom 5 Sub Accounts
-            </h3>
-          </div>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                <h3
+                  className={`text-lg font-semibold mb-4 sm:mb-0 ${theme === "dark" ? "text-white" : ""}`}
+                >
+                  Quality Score Trend
+                </h3>
+                <div className="flex items-center">
+                  <span className={`text-sm mr-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Current:</span>
+                  <span className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {latestScore.toFixed(1)}
+                  </span>
+                  {trend !== 0 && (
+                    <span
+                      className={`ml-2 text-sm ${trend > 0 ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {trend > 0 ? "↑" : "↓"} {Math.abs(trend).toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+              </div>
 
-          {bottomAccounts.length > 0 ? (
-            <div className="overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 tracking-wider">
-                  <thead className={theme === "dark" ? "bg-gray-700" : "bg-gray-50"}>
-                    <tr>
-                      <th
-                        scope="col"
-                        className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 whitespace-nowrap ${
-                          theme === "dark" ? "text-gray-300" : "text-gray-500"
-                        }`}
-                      >
-                        Sub Account
-                      </th>
-                      <th
-                        scope="col"
-                        className={`px-6 py-3 text-xs font-medium uppercase tracking-wider w-2/3 text-center whitespace-nowrap ${
-                          theme === "dark" ? "text-gray-300" : "text-gray-500"
-                        }`}
-                      >
-                        Qs Trend
-                      </th>
-                      <th
-                        scope="col"
-                        className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 whitespace-nowrap ${
-                          theme === "dark" ? "text-gray-300" : "text-gray-500"
-                        }`}
-                      >
-                        Avg QS
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody
-                    className={`divide-y ${
-                      theme === "dark"
-                        ? "divide-gray-700 bg-gray-800"
-                        : "divide-gray-200 bg-white"
-                    }`}
+              <div style={{ height: "300px" }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={scores}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
                   >
-                    {bottomAccounts.map((subAccount, index) => (
-                      <tr
-                        key={subAccount.id}
-                        className={`cursor-pointer transition-colors duration-200 ${
-                          theme === "dark"
-                            ? "hover:bg-gray-700"
-                            : "hover:bg-gray-50"
-                        }`}
-                        onClick={() =>
-                          navigate(`/mcc/${mccId}/sub/${subAccount.id}`)
-                        }
-                      >
-                        <td
-                          className={`px-6 py-4 whitespace-nowrap w-1/6 ${index === bottomAccounts.length - 1 && "align-top"}`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`text-sm font-medium ${
-                                theme === "dark"
-                                  ? "text-white"
-                                  : "text-gray-900"
-                              }`}
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke={theme === "dark" ? "#374151" : "#f0f0f0"}
+                    />
+                    <XAxis
+                      dataKey="axisDate"
+                      tick={{
+                        fontSize: 12,
+                        fill: theme === "dark" ? "#9ca3af" : "#4b5563",
+                      }}
+                      tickLine={false}
+                      axisLine={{
+                        stroke: theme === "dark" ? "#4b5563" : "#9ca3af",
+                        strokeWidth: 1,
+                      }}
+                      tickMargin={10}
+                    />
+                    <YAxis
+                      domain={[0, 10]}
+                      tickCount={6}
+                      tick={{
+                        fontSize: 12,
+                        fill: theme === "dark" ? "#9ca3af" : "#4b5563",
+                      }}
+                      tickLine={false}
+                      axisLine={{
+                        stroke: theme === "dark" ? "#4b5563" : "#9ca3af",
+                        strokeWidth: 1,
+                      }}
+                      width={30}
+                    />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const qsValue = Number(payload[0].value);
+                          const displayQs = qsValue.toFixed(1);
+                          return (
+                            <div
+                              className={`space-y-1.5 p-2 rounded-lg border shadow-md ${theme === "dark"
+                                ? "bg-gray-800 border-gray-700"
+                                : "bg-white border-gray-200"
+                                }`}
                             >
-                              {subAccount.name}
-                            </span>
-                            <div className="relative group">
-                              <span
-                                className={`inline-block w-2 h-2 rounded-full ${getStatusStyle(subAccount.status).bg}`}
-                                style={{ marginTop: "0.25rem" }}
-                                title={subAccount.status}
-                              ></span>
-                              <div
-                                className={`cursor-pointer absolute z-10 hidden group-hover:block bg-gray-200 ${getStatusStyle(subAccount.status).tx} text-xs rounded px-3 py-2 -mt-8 -ml-2`}
-                              >
-                                {subAccount.status}
+                              <div>
+                                <span className="font-semibold text-sm">
+                                  {format(
+                                    new Date(payload[0].payload.date),
+                                    "MMM d, yyyy",
+                                  )}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between space-x-4">
+                                <span
+                                  className={`text-xs ${theme === "dark"
+                                    ? "text-gray-400"
+                                    : "text-gray-500"
+                                    }`}
+                                >
+                                  Quality Score
+                                </span>
+                                <span
+                                  className={`font-medium text-sm ${qsValue >= 8
+                                    ? "text-green-600"
+                                    : qsValue >= 5
+                                      ? "text-yellow-600"
+                                      : "text-red-600"
+                                    }`}
+                                >
+                                  {displayQs}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between space-x-4">
+                                <span
+                                  className={`text-xs ${theme === "dark"
+                                    ? "text-gray-400"
+                                    : "text-gray-600"
+                                    }`}
+                                >
+                                  Accounts:
+                                </span>
+                                <span
+                                  className={`font-medium text-sm ${theme === "dark"
+                                    ? "text-white"
+                                    : "text-gray-900"
+                                    }`}
+                                >
+                                  {payload[0].payload.accountCounts}
+                                </span>
                               </div>
                             </div>
-                          </div>
-                          <div
-                            className={`text-xs ${
-                              theme === "dark"
-                                ? "text-gray-400"
-                                : "text-gray-500"
-                            }`}
-                          >
-                            {subAccount.accountId}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap w-2/3">
-                          <div
-                            className={`w-full ${
-                              index === bottomAccounts.length - 1
-                                ? "h-24"
-                                : "h-10"
-                            }`}
-                          >
-                            <AccountSparkline
-                              width={850}
-                              scores={subAccount.scores || []}
-                              timeRange={timeRange}
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <defs>
+                      <linearGradient id="colorQs" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stopColor="#3b82f6" stopOpacity={1} />
+                        <stop offset={off} stopColor="#3b82f6" stopOpacity={0.1} />
+                      </linearGradient>
+                    </defs>
+                    <Area
+                      type="monotone"
+                      dataKey="qs"
+                      stroke="#3b82f6"
+                      fillOpacity={1}
+                      fill="url(#colorQs)"
+                      strokeWidth={2}
+                      dot={(props) => {
+                        const { cx, cy, payload } = props;
+                        const qsValue = payload.qs;
+                        // Show dot only for non-zero values (make zero dots invisible)
+                        if (qsValue === 0) {
+                          return (
+                            <circle
+                              key={`dot-${payload.date}-${qsValue}`}
+                              cx={cx}
+                              cy={cy}
+                              r={2}
+                              fill="#3b82f6"
+                              stroke={theme === "light" ? "#1e40af" : "#fff"}
+                              strokeWidth={1}
+                              opacity={0}
                             />
-                          </div>
-                        </td>
-                        <td
-                          className={`px-6 py-4 whitespace-nowrap w-1/6 ${index === bottomAccounts.length - 1 && "align-top"}`}
-                        >
-                          <div className="flex items-center">
-                            <span
-                              className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                subAccount.avgQs >= 7
-                                  ? theme === "dark"
-                                    ? "bg-green-900 text-green-200"
-                                    : "bg-green-100 text-green-800"
-                                  : subAccount.avgQs >= 4
-                                    ? theme === "dark"
-                                      ? "bg-yellow-900 text-yellow-200"
-                                      : "bg-yellow-100 text-yellow-800"
-                                    : theme === "dark"
-                                      ? "bg-red-900 text-red-200"
-                                      : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {subAccount.avgQs.toFixed(1)}
-                            </span>
-                            {subAccount.qsChange !== 0 && (
-                              <span
-                                className={`ml-2 text-xs ${subAccount.qsChange > 0 ? "text-green-600" : "text-red-600"}`}
-                              >
-                                {subAccount.qsChange > 0 ? "↑" : "↓"}{" "}
-                                {Math.abs(subAccount.qsChange).toFixed(1)}%
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          );
+                        }
+                        return (
+                          <circle
+                            key={`dot-${payload.date}-${qsValue}`}
+                            cx={cx}
+                            cy={cy}
+                            r={2}
+                            fill="#3b82f6"
+                            stroke={theme === "light" ? "#1e40af" : "#fff"}
+                            strokeWidth={1}
+                          />
+                        );
+                      }}
+                      activeDot={(props) => {
+                        const { cx, cy, payload } = props;
+                        const qsValue = payload.qs;
+                        // Show active dot only for non-zero values
+                        if (qsValue === 0) {
+                          return (
+                            <circle
+                              key={`active-dot-${payload.date}-${qsValue}`}
+                              cx={cx}
+                              cy={cy}
+                              r={6}
+                              fill="#3b82f6"
+                              stroke={theme === "light" ? "#1e40af" : "#fff"}
+                              strokeWidth={2}
+                              opacity={0}
+                            />
+                          );
+                        }
+                        return (
+                          <circle
+                            key={`active-dot-${payload.date}-${qsValue}`}
+                            cx={cx}
+                            cy={cy}
+                            r={6}
+                            fill="#3b82f6"
+                            stroke={theme === "light" ? "#1e40af" : "#fff"}
+                            strokeWidth={2}
+                          />
+                        );
+                      }}
+                    />
+                    <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" />
+                    <ReferenceLine y={4} stroke="#ef4444" strokeDasharray="3 3" />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </div>
-          ) : (
+
+            {/* Worst 5 Sub Accounts */}
             <div
-              className={`text-center py-4 ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}
+              className={`p-6 rounded-lg shadow ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}
             >
-              No sub accounts found
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <h3
+                    className={`text-lg font-semibold ${theme === "dark" ? "text-white" : ""}`}
+                  >
+                    {showBestAccounts ? "Best 5 Accounts" : "Worst 5 Accounts"} (by QS)
+                  </h3>
+                  <button
+                    className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-200 ${theme === "dark"
+                      ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
+                      : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                      }`}
+                    onClick={() => setShowBestAccounts(!showBestAccounts)}
+                    title={`Switch to ${showBestAccounts ? "Worst" : "Best"} 5 Accounts`}
+                  >
+                    <svg
+                      className={`w-4 h-4 transition-transform duration-200 ${showBestAccounts ? "rotate-180" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {displayedAccounts.length > 0 ? (
+                <div className="overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 tracking-wider">
+                      <thead className={theme === "dark" ? "bg-gray-700" : "bg-gray-50"}>
+                        <tr>
+                          <th
+                            scope="col"
+                            className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 whitespace-nowrap ${theme === "dark" ? "text-gray-300" : "text-gray-500"
+                              }`}
+                          >
+                            Accounts
+                          </th>
+                          <th
+                            scope="col"
+                            className={`px-6 py-3 text-xs font-medium uppercase tracking-wider w-2/3 text-center whitespace-nowrap ${theme === "dark" ? "text-gray-300" : "text-gray-500"
+                              }`}
+                          >
+                            Qs Trends
+                          </th>
+                          <th
+                            scope="col"
+                            className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 whitespace-nowrap ${theme === "dark" ? "text-gray-300" : "text-gray-500"
+                              }`}
+                          >
+                            Avg QS
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody
+                        className={`divide-y ${theme === "dark"
+                          ? "divide-gray-700 bg-gray-800"
+                          : "divide-gray-200 bg-white"
+                          }`}
+                      >
+                        {displayedAccounts.map((subAccount, index) => (
+                          <tr
+                            key={subAccount.id}
+                            className={`cursor-pointer transition-colors duration-200 h-16 align-top ${theme === "dark"
+                              ? "hover:bg-gray-700"
+                              : "hover:bg-gray-50"
+                              }`}
+                            onClick={() =>
+                              navigate(`/mcc/${mccId}/sub/${subAccount.id}`)
+                            }
+                          >
+                            <td
+                              className={`px-6 py-4 whitespace-nowrap w-1/6 ${index === displayedAccounts.length - 1 && "align-top"}`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`text-sm font-medium truncate inline-block max-w-[150px] ${theme === "dark"
+                                    ? "text-white"
+                                    : "text-gray-900"
+                                    }`}
+                                  title={subAccount.name}
+                                >
+                                  {subAccount.name}
+                                </span>
+                                <div className="relative group">
+                                  <span
+                                    className={`inline-block w-2 h-2 rounded-full ${getStatusStyle(subAccount.status).bg}`}
+                                    style={{ marginTop: "0.25rem" }}
+                                    title={subAccount.status}
+                                  ></span>
+                                  <div
+                                    className={`cursor-pointer absolute z-10 hidden group-hover:block bg-gray-200 ${getStatusStyle(subAccount.status).tx} text-xs rounded px-3 py-2 -mt-8 -ml-2`}
+                                  >
+                                    {subAccount.status}
+                                  </div>
+                                </div>
+                              </div>
+                              <div
+                                className={`text-xs ${theme === "dark"
+                                  ? "text-gray-400"
+                                  : "text-gray-500"
+                                  }`}
+                              >
+                                ID: {subAccount.accountId}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap w-2/3">
+                              <div
+                                className={`w-full`}
+                              >
+                                <AccountSparkline
+                                  width="100%"
+                                  scores={subAccount.scores || []}
+                                  timeRange={timeRange}
+                                />
+                              </div>
+                            </td>
+                            <td
+                              className={`px-6 py-4 whitespace-nowrap w-1/6 ${index === displayedAccounts.length - 1 && "align-top"}`}
+                            >
+                              <div className="flex items-center">
+                                <span
+                                  className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${subAccount.avgQs >= 7
+                                    ? theme === "dark"
+                                      ? "bg-green-900 text-green-200"
+                                      : "bg-green-100 text-green-800"
+                                    : subAccount.avgQs >= 4
+                                      ? theme === "dark"
+                                        ? "bg-yellow-900 text-yellow-200"
+                                        : "bg-yellow-100 text-yellow-800"
+                                      : theme === "dark"
+                                        ? "bg-red-900 text-red-200"
+                                        : "bg-red-100 text-red-800"
+                                    }`}
+                                >
+                                  {subAccount.avgQs.toFixed(1)}
+                                </span>
+                                {subAccount.qsChange !== 0 && (
+                                  <span
+                                    className={`ml-2 text-xs ${subAccount.qsChange > 0 ? "text-green-600" : "text-red-600"}`}
+                                  >
+                                    {subAccount.qsChange > 0 ? "↑" : "↓"}{" "}
+                                    {Math.abs(subAccount.qsChange).toFixed(1)}%
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className={`text-center py-4 ${theme === "dark" ? "text-gray-400" : "text-gray-500"
+                    }`}
+                >
+                  No {showBestAccounts ? "best" : "worst"} accounts found
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow overflow-hidden`}>
+
+
+            {isLoadingSubAccounts ? (
+              <div className="p-6">
+                <div className="animate-pulse space-y-4">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className={`h-12 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} rounded`}></div>
+                  ))}
+                </div>
+              </div>
+            ) : subAccounts.length > 0 ? (
+              <div>
+                {/* Search Input */}
+                <div className={`flex items-center justify-between ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} border-b`}>
+                  <div className={`p-4`}>
+                    <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Accounts</h2>
+                    <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {subAccounts.length} accounts found
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className={`relative w-full ${!accountsSearchTerm && "pr-4"}`}>
+                      <input
+                        name="accountsSearchTerm"
+                        type="text"
+                        placeholder="Search accounts..."
+                        value={accountsSearchTerm}
+                        onChange={(e) => setAccountsSearchTerm(e.target.value)}
+                        className={`pl-10 pr-4 py-2 text-sm border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${theme === "dark"
+                          ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
+                          : "bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500"
+                          }`}
+                      />
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg
+                          className={`w-4 h-4 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                    {accountsSearchTerm && (
+                      <button
+                        onClick={() => setAccountsSearchTerm("")}
+                        className={`mr-2 p-2 rounded-lg transition-colors duration-200 ${theme === "dark"
+                          ? "text-gray-400 hover:text-gray-300 hover:bg-gray-600"
+                          : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                          }`}
+                        title="Clear search"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+
+                  {filteredSubAccounts.length > 0 ? (
+                    <table className={`min-w-full ${theme === 'dark' ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                      <thead className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                        <tr>
+                          <th
+                            scope="col"
+                            className={`px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
+                          >
+                            Accounts
+                          </th>
+                          <th
+                            scope="col"
+                            className={`px-6 py-3 w-2/3 text-center text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
+                          >
+                            QS Trends
+                          </th>
+                          <th
+                            scope="col"
+                            className={`px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
+                          >
+                            Avg QS
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className={`${theme === 'dark' ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'}`}>
+                        {filteredSubAccounts.map((subAccount) => (
+                          <tr
+                            key={subAccount.id}
+                            className={`cursor-pointer transition-colors duration-200 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}
+                            onClick={() =>
+                              navigate(`/mcc/${mccId}/sub/${subAccount.id}`)
+                            }
+                          >
+                            <td className="px-6 py-4 w-1/6">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-sm font-medium truncate inline-block max-w-[150px] ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} title={subAccount.name}>
+                                  {subAccount.name}
+                                </span>
+                                <div className="relative group">
+                                  <span
+                                    className={`inline-block w-2 h-2 rounded-full ${getStatusStyle(subAccount.status).bg}`}
+                                    style={{ marginBottom: "0.25rem" }}
+                                    title={subAccount.status}
+                                  ></span>
+                                  <div
+                                    className={`cursor-pointer absolute z-10 hidden group-hover:block rounded px-3 py-2 -mt-8 -ml-2 ${theme === 'dark' ? 'bg-gray-900 text-gray-200' : 'bg-gray-200 text-gray-800'} ${getStatusStyle(subAccount.status).tx} text-xs`}
+                                  >
+                                    {subAccount.status}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                ID: {subAccount.accountId}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 w-2/3 whitespace-nowrap">
+                              <div className="w-full min-w-[200px] h-10">
+                                <AccountSparkline
+                                  scores={subAccount.scores || []}
+                                  width="100%"
+                                  height={40}
+                                  timeRange={timeRange}
+                                />
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 w-1/6 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <span
+                                  className={`px-3 py-1 rounded-full text-sm font-medium ${subAccount.avgQs >= 7
+                                    ? `${theme === 'dark' ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-800'}`
+                                    : subAccount.avgQs >= 4
+                                      ? `${theme === 'dark' ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-800'}`
+                                      : `${theme === 'dark' ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-800'}`
+                                    }`}
+                                >
+                                  {subAccount.avgQs.toFixed(1)}/10
+                                </span>
+                                {subAccount.qsChange !== 0 && (
+                                  <span
+                                    className={`ml-3 inline-flex items-center text-sm font-medium ${subAccount.qsChange > 0
+                                      ? "text-green-600"
+                                      : "text-red-600"
+                                      }`}
+                                  >
+                                    {subAccount.qsChange > 0 ? "↑" : "↓"}{" "}
+                                    {Math.abs(subAccount.qsChange).toFixed(1)}%
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className={`p-6 text-center italic ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {accountsSearchTerm ? `No accounts found matching "${accountsSearchTerm}"` : "No accounts found"}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className={`p-6 text-center italic ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                No accounts found
+              </div>
+            )}
+          </div>
+        )}
       </div>
       <ScrollToTop />
     </div>
