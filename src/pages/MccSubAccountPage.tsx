@@ -33,7 +33,12 @@ const MccSubAccountPage: React.FC = () => {
   const { subAccountId = "" } = useParams<{ subAccountId: string }>();
 
   // Time range options
-  const TIME_RANGES = [7, 30, 90, 365];
+  const TIME_RANGES = [
+    { days: 7, label: "7d" },
+    { days: 30, label: "30d" },
+    { days: 90, label: "90d" },
+    { days: 365, label: "1y" },
+  ];
 
   // Component state
   const [timeRange, setTimeRange] = useState<number>(7);
@@ -318,22 +323,20 @@ const MccSubAccountPage: React.FC = () => {
               className="inline-flex rounded-md shadow-sm mt-2 sm:mt-0"
               role="group"
             >
-              {TIME_RANGES.map((days, index) => (
+              {TIME_RANGES.map((range, index) => (
                 <button
-                  key={days}
+                  key={range.days}
                   type="button"
-                  onClick={() => setTimeRange(days)}
-                  className={`px-3 py-1.5 text-sm font-medium ${
-                    timeRange === days
-                      ? "bg-blue-600 text-white"
-                      : theme === "dark"
-                        ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
-                        : "bg-white text-gray-700 hover:bg-gray-50"
+                  onClick={() => setTimeRange(range.days)}
+                  className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
+                    timeRange === range.days
+                      ? `${theme === 'dark' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-blue-100 text-blue-700 border-blue-300'}`
+                      : `${theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`
                   } ${index === 0 ? "rounded-l-md" : ""} ${
                     index === TIME_RANGES.length - 1 ? "rounded-r-md" : ""
-                  } border ${theme === "dark" ? "border-gray-600" : "border-gray-300"} `}
+                  } border`}
                 >
-                  {days === 365 ? "1y" : `${days}d`}
+                  {range.label}
                 </button>
               ))}
             </div>

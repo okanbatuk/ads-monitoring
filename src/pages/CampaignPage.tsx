@@ -2,24 +2,26 @@ import { addDays, format, parse, startOfWeek, subDays } from "date-fns";
 import { useMemo, useState } from "react";
 import { FiArrowDownRight, FiArrowUpRight } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
-    Area,
-    AreaChart,
-    CartesianGrid,
-    Line,
-    LineChart,
-    ReferenceLine,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts";
 import { AdGroupSparkline } from "../components/AdGroupSparkline";
 import {
-    useCampaign,
-    useCampaignAdGroups,
-    useCampaignScores,
+  useCampaign,
+  useCampaignAdGroups,
+  useCampaignScores,
 } from "../services";
+import { useTheme } from "@/contexts/ThemeProvider";
 
 // Skeleton Loader Component
 const SkeletonLoader = ({
@@ -28,30 +30,48 @@ const SkeletonLoader = ({
 }: {
   className?: string;
   count?: number;
-}) => (
-  <>
-    {Array.from({ length: count }).map((_, i) => (
-      <div
-        key={i}
-        className={`animate-pulse bg-gray-200 rounded ${className}`}
-      />
-    ))}
-  </>
-);
+}) => {
+  const { theme } = useTheme();
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className={`animate-pulse ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded ${className}`}
+        />
+      ))}
+    </>
+  );
+};
 
-const TIME_RANGES = [7, 30, 90, 365];
+const TIME_RANGES = [
+  { days: 7, label: "7d" },
+  { days: 30, label: "30d" },
+  { days: 90, label: "90d" },
+  { days: 365, label: "1y" },
+];
 
 // Badge component for status display
 const StatusBadge = ({ status }: { status: string }) => {
+  const { theme } = useTheme();
   const statusMap: Record<string, { bg: string; text: string }> = {
-    ENABLED: { bg: "bg-green-100", text: "text-green-800" },
-    PAUSED: { bg: "bg-yellow-100", text: "text-yellow-800" },
-    REMOVED: { bg: "bg-red-100", text: "text-red-800" },
+    ENABLED: {
+      bg: theme === 'dark' ? 'bg-green-900/30' : 'bg-green-100',
+      text: theme === 'dark' ? 'text-green-400' : 'text-green-800'
+    },
+    PAUSED: {
+      bg: theme === 'dark' ? 'bg-yellow-900/30' : 'bg-yellow-100',
+      text: theme === 'dark' ? 'text-yellow-400' : 'text-yellow-800'
+    },
+    REMOVED: {
+      bg: theme === 'dark' ? 'bg-red-900/30' : 'bg-red-100',
+      text: theme === 'dark' ? 'text-red-400' : 'text-red-800'
+    },
   };
 
   const statusStyle = statusMap[status] || {
-    bg: "bg-gray-100",
-    text: "text-gray-800",
+    bg: theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100',
+    text: theme === 'dark' ? 'text-gray-300' : 'text-gray-800',
   };
 
   return (
@@ -66,6 +86,7 @@ const StatusBadge = ({ status }: { status: string }) => {
 const CampaignPage = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const [timeRange, setTimeRange] = useState(7);
   const [activeTab, setActiveTab] = useState<"overview" | "adgroups">(
     "overview",
@@ -325,13 +346,41 @@ const CampaignPage = () => {
   const off = gradientOffset();
 
   return (
-    <div className="min-h-screen p-6">
+    <div className={`min-h-screen p-6 ${theme === "light" && "bg-gray-50"}`}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
+        <div
+          className={`rounded-lg shadow p-6 mb-8 ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}
+        >
+          <nav className="flex mb-4" aria-label="Breadcrumb">
+            <ol className="inline-flex items-center space-x-1 md:space-x-2">
+              <li>
+                <Link to="/" className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
+                  Home
+                </Link>
+              </li>
+              <li className="flex items-center">
+                <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
+                <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>MCC Account</span>
+              </li>
+              <li className="flex items-center">
+                <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
+                <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>Sub Account</span>
+              </li>
+              <li className="flex items-center">
+                <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
+                <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-700'} font-medium`}>
+                  {campaign?.name || "Campaign"}
+                </span>
+              </li>
+            </ol>
+          </nav>
+
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1
+                className={`text-2xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+              >
                 {campaign?.name || "Campaign"}
               </h1>
               {campaign?.status && (
@@ -349,11 +398,15 @@ const CampaignPage = () => {
                 </div>
               )}
             </div>
-            <div className="text-sm text-gray-600">
+            <div
+              className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+            >
               <span>Campaign ID: {campaignId}</span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mt-2">
+            <div
+              className={`flex flex-wrap items-center gap-4 text-sm ${theme === "dark" ? "text-gray-300" : "text-gray-600"} mt-2`}
+            >
               <div className="flex items-center">
                 <span className="font-medium">Quality Score: </span>
                 <span
@@ -385,14 +438,14 @@ const CampaignPage = () => {
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-gray-200 mb-6">
+        <div className={`border-b mb-6 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <nav className="-mb-px flex space-x-8">
             <button
               onClick={() => setActiveTab("overview")}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                 activeTab === "overview"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? `${theme === 'dark' ? 'border-green-500 text-green-400' : 'border-green-500 text-green-600'}`
+                  : `${theme === 'dark' ? 'border-transparent text-gray-400 hover:text-green-400 hover:border-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
               }`}
             >
               Overview
@@ -402,10 +455,10 @@ const CampaignPage = () => {
                 setActiveTab("adgroups");
                 refetchAdGroups();
               }}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                 activeTab === "adgroups"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? `${theme === 'dark' ? 'border-green-500 text-green-400' : 'border-green-500 text-green-600'}`
+                  : `${theme === 'dark' ? 'border-transparent text-gray-400 hover:text-green-400 hover:border-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
               }`}
             >
               Ad Groups ({adGroupCount})
@@ -416,20 +469,20 @@ const CampaignPage = () => {
         {/* Date Range Selector */}
         <div className="flex justify-end items-center mb-6">
           <div className="inline-flex rounded-md shadow-sm">
-            {TIME_RANGES.map((days) => (
+            {TIME_RANGES.map((range, index) => (
               <button
-                key={days}
+                key={range.days}
                 type="button"
-                onClick={() => setTimeRange(days)}
-                className={`px-4 py-2 text-sm font-medium ${
-                  timeRange === days
-                    ? "bg-blue-600 text-white"
-                    : "bg-white text-gray-700 hover:bg-gray-50"
-                } ${days === 7 ? "rounded-l-md" : ""} ${
-                  days === 365 ? "rounded-r-md" : ""
-                } border border-gray-300`}
+                onClick={() => setTimeRange(range.days)}
+                className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
+                  timeRange === range.days
+                    ? `${theme === 'dark' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-blue-100 text-blue-700 border-blue-300'}`
+                    : `${theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`
+                } ${index === 0 ? "rounded-l-md" : ""} ${
+                  index === TIME_RANGES.length - 1 ? "rounded-r-md" : ""
+                } border`}
               >
-                {days}d
+                {range.label}
               </button>
             ))}
           </div>
@@ -438,12 +491,12 @@ const CampaignPage = () => {
         {activeTab === "overview" ? (
           <div className="space-y-6">
             {/* Quality Score Trend Chart */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow p-6`}>
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold">Quality Score Trend</h2>
+                <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Quality Score Trend</h2>
                 <div className="flex items-center">
-                  <span className="text-sm text-gray-500 mr-2">Current:</span>
-                  <span className="text-lg font-semibold text-gray-900">
+                  <span className={`text-sm mr-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Current:</span>
+                  <span className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     {currentScore.toFixed(1)}
                   </span>
                   {trend !== 0 && (
@@ -490,9 +543,9 @@ const CampaignPage = () => {
                             const qsValue = Number(payload[0].value);
                             const displayQs = qsValue.toFixed(1);
                             return (
-                              <div className="space-y-1.5 p-2 rounded-lg bg-white border border-gray-200 shadow-md">
+                              <div className={`space-y-1.5 p-2 rounded-lg shadow-md ${theme === 'dark' ? 'bg-gray-800 border border-gray-600' : 'bg-white border border-gray-200'}`}>
                                 <div>
-                                  <span className="font-semibold text-sm">
+                                  <span className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                                     {format(
                                       new Date(payload[0].payload.date),
                                       "MMM d, yyyy",
@@ -500,7 +553,7 @@ const CampaignPage = () => {
                                   </span>
                                 </div>
                                 <div className="flex items-center justify-between space-x-4">
-                                  <span className="text-gray-500 text-xs">
+                                  <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                                     Quality Score
                                   </span>
                                   <span
@@ -516,10 +569,10 @@ const CampaignPage = () => {
                                   </span>
                                 </div>
                                 <div className="flex items-center justify-between space-x-4">
-                                  <span className="text-gray-600 text-xs">
+                                  <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                                     Ad Groups:
                                   </span>
-                                  <span className="font-medium text-sm text-gray-900">
+                                  <span className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                                     {payload[0].payload.adGroupCount}
                                   </span>
                                 </div>
@@ -572,7 +625,7 @@ const CampaignPage = () => {
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-gray-500">
+                  <div className={`h-full flex items-center justify-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                     No data available for the selected period
                   </div>
                 )}
@@ -580,36 +633,36 @@ const CampaignPage = () => {
             </div>
 
             {/* Bottom 5 Ad Groups Section */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-4">
+            <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow p-6`}>
+              <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 Bottom 5 Ad Groups by Quality Score
               </h3>
               {bottomAdGroups.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className={`min-w-full ${theme === 'dark' ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                    <thead className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
                       <tr>
                         <th
                           scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6"
+                          className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
                         >
                           Ad Group
                         </th>
                         <th
                           scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/2"
+                          className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
                         >
                           QS Trend
                         </th>
                         <th
                           scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6"
+                          className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
                         >
                           AVG QS
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className={`${theme === 'dark' ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'}`}>
                       {bottomAdGroups.map((adGroup) => {
                         const latestScore = adGroup.score;
                         const sparklineData = adGroup.sparklineData || [];
@@ -632,7 +685,7 @@ const CampaignPage = () => {
                         return (
                           <tr
                             key={adGroup.id}
-                            className="hover:bg-gray-50 cursor-pointer"
+                            className={`cursor-pointer transition-colors duration-200 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}
                             onClick={() =>
                               navigate(
                                 `/campaigns/${campaignId}/adgroups/${adGroup.id}`,
@@ -641,7 +694,7 @@ const CampaignPage = () => {
                           >
                             <td className="px-6 py-4 w-1/6">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-gray-900 truncate">
+                                <span className={`text-sm font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                                   {adGroup.name}
                                 </span>
                                 <div className="relative group">
@@ -651,13 +704,13 @@ const CampaignPage = () => {
                                     title={adGroup.status}
                                   ></span>
                                   <div
-                                    className={`cursor-pointer absolute z-10 hidden group-hover:block bg-gray-200 ${getStatusStyle(adGroup.status).tx} text-xs rounded px-3 py-2 -mt-8 -ml-2`}
+                                    className={`cursor-pointer absolute z-10 hidden group-hover:block rounded px-3 py-2 -mt-8 -ml-2 ${theme === 'dark' ? 'bg-gray-900 text-gray-200' : 'bg-gray-200 text-gray-800'} ${getStatusStyle(adGroup.status).tx} text-xs`}
                                   >
                                     {adGroup.status}
                                   </div>
                                 </div>
                               </div>
-                              <div className="text-xs text-gray-500 mt-1">
+                              <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                                 ID: {adGroup.id}
                               </div>
                             </td>
@@ -686,20 +739,72 @@ const CampaignPage = () => {
                                         <XAxis dataKey="date" hide />
                                         <YAxis hide domain={[0, 10]} />
                                         <Tooltip
-                                          contentStyle={{ fontSize: "12px" }}
-                                          formatter={(value: number) => [
-                                            `${value.toFixed(1)}`,
-                                            "QS",
-                                          ]}
-                                          labelFormatter={(label) =>
-                                            `Date: ${label}`
-                                          }
+                                          content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                              const qsValue = Number(payload[0].value);
+                                              const displayQs = qsValue.toFixed(1);
+                                              const isDark = theme === "dark";
+                                              return (
+                                                <div
+                                                  className={`space-y-1.5 p-3 rounded-lg backdrop-blur-sm border shadow-sm ${isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50/95 border-gray-100"}`}
+                                                  style={{
+                                                    boxShadow: isDark
+                                                      ? "0 4px 20px -5px rgba(0, 0, 0, 0.2)"
+                                                      : "0 4px 20px -5px rgba(0, 0, 0, 0.05)",
+                                                  }}
+                                                >
+                                                  <div className="flex items-center justify-between space-x-4">
+                                                    <span
+                                                      className={`text-sm ${
+                                                        isDark ? "text-gray-300" : "text-gray-500"
+                                                      }`}
+                                                    >
+                                                      {payload[0].payload.date}
+                                                    </span>
+                                                  </div>
+                                                  <div className="flex items-center justify-between space-x-4">
+                                                    <span
+                                                      className={`text-sm ${
+                                                        isDark ? "text-gray-400" : "text-gray-500"
+                                                      }`}
+                                                    >
+                                                      Quality Score
+                                                    </span>
+                                                    <span
+                                                      className={`text-sm font-medium ${
+                                                        qsValue >= 7
+                                                          ? isDark
+                                                            ? "text-green-400"
+                                                            : "text-green-600"
+                                                          : qsValue >= 4
+                                                            ? isDark
+                                                              ? "text-yellow-400"
+                                                              : "text-yellow-600"
+                                                            : isDark
+                                                              ? "text-red-400"
+                                                              : "text-red-600"
+                                                      }`}
+                                                    >
+                                                      {displayQs}
+                                                    </span>
+                                                  </div>
+                                                </div>
+                                              );
+                                            }
+                                            return null;
+                                          }}
+                                          contentStyle={{
+                                            background: "transparent",
+                                            border: "none",
+                                            boxShadow: "none",
+                                            padding: 0,
+                                          }}
                                         />
                                       </LineChart>
                                     </ResponsiveContainer>
                                   </div>
                                 ) : (
-                                  <div className="text-xs text-gray-400 h-full flex items-center">
+                                  <div className={`text-xs h-full flex items-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`}>
                                     No data
                                   </div>
                                 )}
@@ -710,10 +815,10 @@ const CampaignPage = () => {
                                 <span
                                   className={`px-3 py-1 rounded-full text-sm font-medium ${
                                     latestScore >= 7
-                                      ? "bg-green-100 text-green-800"
+                                      ? `${theme === 'dark' ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-800'}`
                                       : latestScore >= 4
-                                        ? "bg-yellow-100 text-yellow-800"
-                                        : "bg-red-100 text-red-800"
+                                        ? `${theme === 'dark' ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-800'}`
+                                        : `${theme === 'dark' ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-800'}`
                                   }`}
                                 >
                                   {latestScore.toFixed(1)}
@@ -736,17 +841,17 @@ const CampaignPage = () => {
                   </table>
                 </div>
               ) : (
-                <div className="px-6 py-4 text-center text-gray-500">
+                <div className={`px-6 py-4 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                   No ad groups found
                 </div>
               )}
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="p-4 border-b border-gray-200">
-              <h2 className="text-lg font-bold text-gray-900">Ad Groups</h2>
-              <p className="mt-1 text-sm text-gray-500">
+          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow overflow-hidden`}>
+            <div className={`p-4 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} border-b`}>
+              <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Ad Groups</h2>
+              <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                 {isLoadingAdGroups
                   ? "Loading..."
                   : `${adGroupCount} ad groups found`}
@@ -757,42 +862,42 @@ const CampaignPage = () => {
               <div className="p-6">
                 <div className="animate-pulse space-y-4">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="h-12 bg-gray-100 rounded"></div>
+                    <div key={i} className={`h-12 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} rounded`}></div>
                   ))}
                 </div>
               </div>
             ) : adGroupsData.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className={`min-w-full ${theme === 'dark' ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                  <thead className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
                     <tr>
                       <th
                         scope="col"
-                        className="px-6 py-3 w-1/4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className={`px-6 py-3 w-1/4 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
                       >
                         Ad Group
                       </th>
                       <th
                         scope="col"
-                        className="px-6 py-3 w-1/6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className={`px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
                       >
                         Status
                       </th>
                       <th
                         scope="col"
-                        className="px-6 py-3 w-2/5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className={`px-6 py-3 w-2/5 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
                       >
                         QS Trend
                       </th>
                       <th
                         scope="col"
-                        className="px-6 py-3 w-1/6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className={`px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
                       >
                         Avg QS
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className={`${theme === 'dark' ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'}`}>
                     {adGroupsData.map((adGroup) => {
                       const scores = adGroup.scores || [];
                       const latestScore = scores.length > 0 ? scores[0].qs : 0;
@@ -806,7 +911,7 @@ const CampaignPage = () => {
                       return (
                         <tr
                           key={adGroup.id}
-                          className="hover:bg-gray-50 cursor-pointer"
+                          className={`cursor-pointer transition-colors duration-200 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}
                           onClick={() =>
                             navigate(
                               `/campaigns/${campaignId}/adgroups/${adGroup.id}`,
@@ -814,10 +919,10 @@ const CampaignPage = () => {
                           }
                         >
                           <td className="px-6 py-4 w-1/4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                               {adGroup.name}
                             </div>
-                            <div className="text-xs text-gray-500 mt-1">
+                            <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                               ID: {adGroup.id}
                             </div>
                           </td>
@@ -839,10 +944,10 @@ const CampaignPage = () => {
                               <span
                                 className={`px-3 py-1 rounded-full text-sm font-medium ${
                                   latestScore >= 7
-                                    ? "bg-green-100 text-green-800"
+                                    ? `${theme === 'dark' ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-800'}`
                                     : latestScore >= 4
-                                      ? "bg-yellow-100 text-yellow-800"
-                                      : "bg-red-100 text-red-800"
+                                      ? `${theme === 'dark' ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-800'}`
+                                      : `${theme === 'dark' ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-800'}`
                                 }`}
                               >
                                 {latestScore.toFixed(1)}/10
@@ -873,7 +978,7 @@ const CampaignPage = () => {
                 </table>
               </div>
             ) : (
-              <div className="p-6 text-center text-gray-500">
+              <div className={`p-6 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                 No ad groups found
               </div>
             )}

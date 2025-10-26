@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
 import { AdGroupScoreDto } from '../types/api.types';
 import { format, parse, subDays, isWithinInterval, addDays, startOfWeek } from 'date-fns';
+import { useTheme } from '../contexts/ThemeProvider';
 
 interface AdGroupSparklineProps {
   scores: AdGroupScoreDto[];
@@ -15,12 +16,13 @@ export const AdGroupSparkline: React.FC<AdGroupSparklineProps> = ({
   scores = [],
   width = 500,
   height = 30,
-  timeRange = 7, // default to 7 days
-  onClick
+  timeRange = 7,
 }) => {
+  const { theme } = useTheme();
+
   if (!scores || scores.length === 0) {
     return (
-      <div className="text-xs text-gray-400 text-center" style={{ width, height }}>
+      <div className={`text-xs text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`} style={{ width, height }}>
         No data
       </div>
     );
@@ -32,11 +34,11 @@ export const AdGroupSparkline: React.FC<AdGroupSparklineProps> = ({
     const startDate = subDays(now, timeRange - 1);
     
     // Create a map of date strings to scores for easy lookup
-    const scoreMap = new Map<string, number>();
+    const scoreMap = new Map<string, {qs: number, keywordCount: number}>();
     scores.forEach(score => {
       const date = parse(score.date, 'dd.MM.yyyy', new Date());
       if (isWithinInterval(date, { start: startDate, end: now })) {
-        scoreMap.set(format(date, 'yyyy-MM-dd'), score.qs);
+        scoreMap.set(format(date, 'yyyy-MM-dd'), {qs: score.qs, keywordCount: score.keywordCount});
       }
     });
 
@@ -53,14 +55,14 @@ export const AdGroupSparkline: React.FC<AdGroupSparklineProps> = ({
       dateArray.forEach(date => {
         const weekStart = format(startOfWeek(date), 'yyyy-MM-dd');
         const dateStr = format(date, 'yyyy-MM-dd');
-        const score = scoreMap.get(dateStr) || 0;
+        const data = scoreMap.get(dateStr) || {qs: 0, keywordCount: 0};
         
         if (!weekGroups.has(weekStart)) {
           weekGroups.set(weekStart, { sum: 0, count: 0 });
         }
         
         const group = weekGroups.get(weekStart)!;
-        group.sum += score;
+        group.sum += data.qs;
         group.count++;
       });
 
@@ -77,22 +79,12 @@ export const AdGroupSparkline: React.FC<AdGroupSparklineProps> = ({
         const displayDate = format(date, timeRange <= 14 ? 'MMM d' : 'd MMM');
         return {
           date: displayDate,
-          qs: scoreMap.get(dateStr) || 0
+          qs: (scoreMap.get(dateStr) || {qs: 0, keywordCount: 0}).qs
         };
       });
     }
   }, [scores, timeRange]);
 
-  // Calculate trend (simple difference between first and last non-zero score)
-  const trend = useMemo(() => {
-    const nonZeroData = data.filter(d => d.qs > 0);
-    if (nonZeroData.length < 2) return 0;
-    
-    const firstNonZero = nonZeroData[0];
-    const lastNonZero = nonZeroData[nonZeroData.length - 1];
-    
-    return ((lastNonZero.qs - firstNonZero.qs) / (firstNonZero.qs || 1)) * 100;
-  }, [data]);
 
   // Get the latest non-zero score for display
   const latestScore = useMemo(() => {
@@ -126,10 +118,67 @@ export const AdGroupSparkline: React.FC<AdGroupSparklineProps> = ({
               hide 
               domain={[0, 10]}
             />
-            <Tooltip 
-              contentStyle={{ fontSize: '12px' }}
-              formatter={(value: number) => [`${value.toFixed(1)}`, 'QS']}
-              labelFormatter={(label) => `Date: ${label}`}
+            <Tooltip
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  const qsValue = Number(payload[0].value);
+                  const displayQs = qsValue.toFixed(1);
+                  const isDark = theme === "dark";
+                  return (
+                    <div
+                      className={`space-y-1.5 p-3 rounded-lg backdrop-blur-sm border shadow-sm ${isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50/95 border-gray-100"}`}
+                      style={{
+                        boxShadow: isDark
+                          ? "0 4px 20px -5px rgba(0, 0, 0, 0.2)"
+                          : "0 4px 20px -5px rgba(0, 0, 0, 0.05)",
+                      }}
+                    >
+                      <div className="flex items-center justify-between space-x-4">
+                        <span
+                          className={`text-sm ${
+                            isDark ? "text-gray-300" : "text-gray-500"
+                          }`}
+                        >
+                          {payload[0].payload.date}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between space-x-4">
+                        <span
+                          className={`text-sm ${
+                            isDark ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
+                          Quality Score
+                        </span>
+                        <span
+                          className={`text-sm font-medium ${
+                            qsValue >= 7
+                              ? isDark
+                                ? "text-green-400"
+                                : "text-green-600"
+                              : qsValue >= 4
+                                ? isDark
+                                  ? "text-yellow-400"
+                                  : "text-yellow-600"
+                                : isDark
+                                  ? "text-red-400"
+                                  : "text-red-600"
+                          }`}
+                        >
+                          {displayQs}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              }}
+              contentStyle={{
+                background: "transparent",
+                border: "none",
+                boxShadow: "none",
+                padding: 0,
+              }}
             />
           </LineChart>
         </ResponsiveContainer>

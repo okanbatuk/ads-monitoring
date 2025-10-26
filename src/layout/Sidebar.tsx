@@ -77,7 +77,6 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     }
 
     const query = searchQuery.toLowerCase().trim();
-    console.log(expandedNodes);
     return originalFlatNodes.filter(
       ({ node }) =>
         node.name.toLowerCase().includes(query) ||

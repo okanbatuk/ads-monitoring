@@ -1,6 +1,7 @@
 import { addDays, format, parse, subDays } from "date-fns";
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   Area,
   AreaChart,
@@ -21,7 +22,12 @@ import {
 } from "../services/api";
 
 // Time range options
-const TIME_RANGES = [7, 30, 90, 365];
+const TIME_RANGES = [
+  { days: 7, label: "7d" },
+  { days: 30, label: "30d" },
+  { days: 90, label: "90d" },
+  { days: 365, label: "1y" },
+];
 
 interface ScoreData {
   axisDate: string;
@@ -252,6 +258,22 @@ export const MccAccountPage = () => {
         <div
           className={`rounded-lg shadow p-6 mb-8 ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}
         >
+          <nav className="flex mb-4" aria-label="Breadcrumb">
+            <ol className="inline-flex items-center space-x-1 md:space-x-2">
+              <li>
+                <Link to="/" className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
+                  Home
+                </Link>
+              </li>
+              <li className="flex items-center">
+                <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
+                <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-700'} font-medium`}>
+                  {account.name}
+                </span>
+              </li>
+            </ol>
+          </nav>
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
@@ -309,22 +331,20 @@ export const MccAccountPage = () => {
               Quality Score Trend
             </h3>
             <div className="inline-flex rounded-md shadow-sm" role="group">
-              {TIME_RANGES.map((days, index) => (
+              {TIME_RANGES.map((range, index) => (
                 <button
-                  key={days}
+                  key={range.days}
                   type="button"
-                  onClick={() => setTimeRange(days)}
-                  className={`px-3 py-1.5 text-sm font-medium ${
-                    timeRange === days
-                      ? "bg-blue-600 text-white"
-                      : theme === "dark"
-                        ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
-                        : "bg-white text-gray-700 hover:bg-gray-50"
+                  onClick={() => setTimeRange(range.days)}
+                  className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
+                    timeRange === range.days
+                      ? `${theme === 'dark' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-blue-100 text-blue-700 border-blue-300'}`
+                      : `${theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`
                   } ${index === 0 ? "rounded-l-md" : ""} ${
                     index === TIME_RANGES.length - 1 ? "rounded-r-md" : ""
-                  } ${theme === "dark" ? "border-gray-600" : "border-gray-300"} border`}
+                  } border`}
                 >
-                  {days === 365 ? "1y" : `${days}d`}
+                  {range.label}
                 </button>
               ))}
             </div>
@@ -474,49 +494,47 @@ export const MccAccountPage = () => {
 
           {bottomAccounts.length > 0 ? (
             <div className="overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead
-                  className={theme === "dark" ? "bg-gray-700" : "bg-gray-50"}
-                >
-                  <tr>
-                    <th
-                      scope="col"
-                      className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 ${
-                        theme === "dark" ? "text-gray-300" : "text-gray-500"
-                      }`}
-                    >
-                      Sub Account
-                    </th>
-                    <th
-                      scope="col"
-                      className={`px-6 py-3 text-xs font-medium uppercase tracking-wider w-2/3 text-center ${
-                        theme === "dark" ? "text-gray-300" : "text-gray-500"
-                      }`}
-                    >
-                      Qs Trend
-                    </th>
-                    <th
-                      scope="col"
-                      className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 ${
-                        theme === "dark" ? "text-gray-300" : "text-gray-500"
-                      }`}
-                    >
-                      Avg QS
-                    </th>
-                  </tr>
-                </thead>
-                <tbody
-                  className={`divide-y ${
-                    theme === "dark"
-                      ? "divide-gray-700 bg-gray-800"
-                      : "divide-gray-200 bg-white"
-                  }`}
-                >
-                  {bottomAccounts.map((subAccount, index) => {
-                    return (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 tracking-wider">
+                  <thead className={theme === "dark" ? "bg-gray-700" : "bg-gray-50"}>
+                    <tr>
+                      <th
+                        scope="col"
+                        className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 whitespace-nowrap ${
+                          theme === "dark" ? "text-gray-300" : "text-gray-500"
+                        }`}
+                      >
+                        Sub Account
+                      </th>
+                      <th
+                        scope="col"
+                        className={`px-6 py-3 text-xs font-medium uppercase tracking-wider w-2/3 text-center whitespace-nowrap ${
+                          theme === "dark" ? "text-gray-300" : "text-gray-500"
+                        }`}
+                      >
+                        Qs Trend
+                      </th>
+                      <th
+                        scope="col"
+                        className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 whitespace-nowrap ${
+                          theme === "dark" ? "text-gray-300" : "text-gray-500"
+                        }`}
+                      >
+                        Avg QS
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody
+                    className={`divide-y ${
+                      theme === "dark"
+                        ? "divide-gray-700 bg-gray-800"
+                        : "divide-gray-200 bg-white"
+                    }`}
+                  >
+                    {bottomAccounts.map((subAccount, index) => (
                       <tr
                         key={subAccount.id}
-                        className={`cursor-pointer ${
+                        className={`cursor-pointer transition-colors duration-200 ${
                           theme === "dark"
                             ? "hover:bg-gray-700"
                             : "hover:bg-gray-50"
@@ -538,7 +556,7 @@ export const MccAccountPage = () => {
                             >
                               {subAccount.name}
                             </span>
-                            <div className="relative group ">
+                            <div className="relative group">
                               <span
                                 className={`inline-block w-2 h-2 rounded-full ${getStatusStyle(subAccount.status).bg}`}
                                 style={{ marginTop: "0.25rem" }}
@@ -564,7 +582,6 @@ export const MccAccountPage = () => {
                         <td className="px-3 py-2 whitespace-nowrap w-2/3">
                           <div
                             className={`w-full ${
-                              // Add more height to the last item in the list
                               index === bottomAccounts.length - 1
                                 ? "h-24"
                                 : "h-10"
@@ -609,10 +626,10 @@ export const MccAccountPage = () => {
                           </div>
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : (
             <div

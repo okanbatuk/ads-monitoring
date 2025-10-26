@@ -27,6 +27,7 @@ import {
   AreaChart,
   Area,
 } from "recharts";
+import { useTheme } from "@/contexts/ThemeProvider";
 
 // Skeleton Loader Component
 const SkeletonLoader = ({
@@ -35,16 +36,19 @@ const SkeletonLoader = ({
 }: {
   className?: string;
   count?: number;
-}) => (
-  <>
-    {Array.from({ length: count }).map((_, i) => (
-      <div
-        key={i}
-        className={`animate-pulse bg-gray-200 rounded ${className}`}
-      />
-    ))}
-  </>
-);
+}) => {
+  const { theme } = useTheme();
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className={`animate-pulse ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded ${className}`}
+        />
+      ))}
+    </>
+  );
+};
 
 const TIME_RANGES = [
   { days: 7, label: "7d" },
@@ -94,6 +98,7 @@ type StatusType = "ENABLED" | "PAUSED" | "REMOVED" | string;
 const AdGroupPage: React.FC = () => {
   const { adGroupId } = useParams<{ adGroupId: string }>();
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState<"overview" | "keywords">(
     "overview",
   );
@@ -229,36 +234,28 @@ const AdGroupPage: React.FC = () => {
   // Show loading state
   if (isLoading) {
     return (
-      <div className="w-full p-6">
-        <div className="container mx-auto">
-          {/* Header Skeleton */}
-          <div className="mb-8">
-            <SkeletonLoader className="h-8 w-64 mb-4" />
-            <SkeletonLoader className="h-4 w-48" />
-          </div>
-
-          {/* Tabs Skeleton */}
-          <div className="flex space-x-8 border-b border-gray-200 mb-6">
-            <SkeletonLoader className="h-12 w-24" />
-            <SkeletonLoader className="h-12 w-24" />
-          </div>
-
-          {/* Time Range Skeleton */}
-          <div className="flex justify-end mb-6">
-            <SkeletonLoader className="h-10 w-96" />
-          </div>
-
-          {/* Content Skeleton */}
-          {activeTab === "overview" ? (
-            <div className="space-y-6">
-              <SkeletonLoader className="h-64 w-full rounded-lg" />
-              <SkeletonLoader className="h-64 w-full rounded-lg" />
+      <div className={`min-h-screen p-6 ${theme === "light" && "bg-gray-50"}`}>
+        <div className="max-w-7xl mx-auto">
+          <div className="animate-pulse">
+            <div
+              className={`h-8 rounded w-1/3 mb-6 ${theme === "dark" ? "bg-gray-700" : "bg-gray-200"}`}
+            ></div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className={`h-32 rounded-lg shadow p-6 ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}
+                >
+                  <div
+                    className={`h-4 rounded w-1/2 mb-4 ${theme === "dark" ? "bg-gray-700" : "bg-gray-200"}`}
+                  ></div>
+                  <div
+                    className={`h-8 rounded w-1/3 ${theme === "dark" ? "bg-gray-700" : "bg-gray-200"}`}
+                  ></div>
+                </div>
+              ))}
             </div>
-          ) : (
-            <div className="space-y-4">
-              <SkeletonLoader className="h-12 w-full" count={5} />
-            </div>
-          )}
+          </div>
         </div>
       </div>
     );
@@ -267,20 +264,22 @@ const AdGroupPage: React.FC = () => {
   // Show error state
   if (isError) {
     return (
-      <div className="w-full p-6">
-        <div className="container mx-auto bg-red-50 border border-red-200 rounded-lg p-4">
-          <h2 className="text-lg font-medium text-red-800">
-            Error loading data
-          </h2>
-          <p className="text-red-700 mt-1">
-            {error?.message || "An unknown error occurred"}
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-3 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-          >
-            Try Again
-          </button>
+      <div className={`min-h-screen p-6 ${theme === "light" && "bg-gray-50"}`}>
+        <div className="max-w-7xl mx-auto">
+          <div className={`${theme === "dark" ? "bg-red-900/20 border-red-800" : "bg-red-50 border-red-200"} border rounded-lg p-4`}>
+            <h2 className={`text-lg font-medium ${theme === "dark" ? "text-red-400" : "text-red-800"}`}>
+              Error loading data
+            </h2>
+            <p className={`${theme === "dark" ? "text-red-300" : "text-red-700"} mt-1`}>
+              {error?.message || "An unknown error occurred"}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className={`mt-3 px-4 py-2 ${theme === "dark" ? "bg-red-800 hover:bg-red-700" : "bg-red-600 hover:bg-red-700"} text-white rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500`}
+            >
+              Try Again
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -298,32 +297,42 @@ const AdGroupPage: React.FC = () => {
   const off = gradientOffset();
 
   return (
-    <div className="min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className={`min-h-screen p-6 ${theme === "light" && "bg-gray-50"}`}>
+      <div className="max-w-7xl mx-auto">
         {/* Header with breadcrumb */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          {/* <nav className="flex mb-4" aria-label="Breadcrumb">
+        <div className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} rounded-lg shadow p-6 mb-8`}>
+          <nav className="flex mb-4" aria-label="Breadcrumb">
             <ol className="inline-flex items-center space-x-1 md:space-x-2">
               <li>
-                <Link to="/" className="text-blue-600 hover:underline">Accounts</Link>
-              </li>
-              <li className="flex items-center">
-                <span className="mx-2 text-gray-400">/</span>
-                <Link to={`/accounts/${}/campaigns/${adGroup?.campaignId}`} className="text-blue-600 hover:underline">
-                  Campaign
+                <Link to="/" className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
+                  Home
                 </Link>
               </li>
               <li className="flex items-center">
-                <span className="mx-2 text-gray-400">/</span>
-                <span className="text-gray-700">{adGroup?.name}</span>
+                <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
+                <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>MCC Account</span>
+              </li>
+              <li className="flex items-center">
+                <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
+                <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>Sub Account</span>
+              </li>
+              <li className="flex items-center">
+                <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
+                <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>Campaign</span>
+              </li>
+              <li className="flex items-center">
+                <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
+                <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-700'} font-medium`}>
+                  {adGroup?.name}
+                </span>
               </li>
             </ol>
-          </nav> */}
+          </nav>
 
           <div className="flex justify-between items-start">
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className={`text-2xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
                   {adGroup?.name}
                 </h1>
                 <div className="relative group">
@@ -339,11 +348,11 @@ const AdGroupPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <div className="text-sm text-gray-600">
+              <div className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
                 <span>Ad Group ID: {adGroup?.id}</span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mt-2">
+              <div className={`flex flex-wrap items-center gap-4 text-sm ${theme === "dark" ? "text-gray-300" : "text-gray-600"} mt-2`}>
                 <div className="flex items-center">
                   <span className="font-medium">Quality Score: </span>
                   <span
@@ -376,24 +385,24 @@ const AdGroupPage: React.FC = () => {
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-gray-200 mb-6">
+        <div className={`border-b mb-6 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <nav className="-mb-px flex space-x-8">
             <button
               onClick={() => setActiveTab("overview")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                 activeTab === "overview"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? `${theme === 'dark' ? 'border-green-500 text-green-400' : 'border-green-500 text-green-600'}`
+                  : `${theme === 'dark' ? 'border-transparent text-gray-400 hover:text-green-400 hover:border-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
               }`}
             >
               Overview
             </button>
             <button
               onClick={handleKeywordsTabClick}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                 activeTab === "keywords"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? `${theme === 'dark' ? 'border-green-500 text-green-400' : 'border-green-500 text-green-600'}`
+                  : `${theme === 'dark' ? 'border-transparent text-gray-400 hover:text-green-400 hover:border-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
               }`}
             >
               Keywords ({totalKeywords})
@@ -404,17 +413,17 @@ const AdGroupPage: React.FC = () => {
         {/* Time Range Selector */}
         <div className="flex justify-end items-center mb-6">
           <div className="inline-flex rounded-md shadow-sm">
-            {TIME_RANGES.map((range) => (
+            {TIME_RANGES.map((range, index) => (
               <button
                 key={range.days}
                 onClick={() => setTimeRange(range.days)}
-                className={`px-4 py-2 text-sm font-medium ${
+                className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
                   timeRange === range.days
-                    ? "bg-blue-100 text-blue-700 border-blue-300"
-                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                } border ${range.days === 7 ? "rounded-l-md" : ""} ${
-                  range.days === 365 ? "rounded-r-md" : ""
-                }`}
+                    ? `${theme === 'dark' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-blue-100 text-blue-700 border-blue-300'}`
+                    : `${theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`
+                } ${index === 0 ? "rounded-l-md" : ""} ${
+                  index === TIME_RANGES.length - 1 ? "rounded-r-md" : ""
+                } border`}
               >
                 {range.label}
               </button>
@@ -425,8 +434,8 @@ const AdGroupPage: React.FC = () => {
         {activeTab === "overview" ? (
           <div className="space-y-6">
             {/* QS Line Chart */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4">
+            <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow p-6`}>
+              <h2 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 Quality Score Trend
               </h2>
               <div className="h-64">
@@ -439,21 +448,21 @@ const AdGroupPage: React.FC = () => {
                       <CartesianGrid
                         strokeDasharray="3 3"
                         vertical={false}
-                        stroke="#f0f0f0"
+                        stroke={theme === "dark" ? "#374151" : "#f0f0f0"}
                       />
                       <XAxis
                         dataKey="axisDate"
-                        tick={{ fontSize: 12, fill: "#6b7280" }}
+                        tick={{ fontSize: 12, fill: theme === "dark" ? "#9ca3af" : "#6b7280" }}
                         tickLine={false}
-                        axisLine={{ stroke: "#e5e7eb", strokeWidth: 1 }}
+                        axisLine={{ stroke: theme === "dark" ? "#4b5563" : "#e5e7eb", strokeWidth: 1 }}
                         tickMargin={10}
                       />
                       <YAxis
                         domain={[0, 10]}
                         tickCount={6}
-                        tick={{ fontSize: 12, fill: "#6b7280" }}
+                        tick={{ fontSize: 12, fill: theme === "dark" ? "#9ca3af" : "#6b7280" }}
                         tickLine={false}
-                        axisLine={{ stroke: "#9ca3af", strokeWidth: 1 }}
+                        axisLine={{ stroke: theme === "dark" ? "#4b5563" : "#9ca3af", strokeWidth: 1 }}
                         width={30}
                       />
                       <Tooltip
@@ -462,9 +471,9 @@ const AdGroupPage: React.FC = () => {
                             const qsValue = Number(payload[0].value);
                             const displayQs = qsValue.toFixed(1);
                             return (
-                              <div className="space-y-1.5 p-2 rounded-lg bg-white border border-gray-200 shadow-md">
+                              <div className={`space-y-1.5 p-2 rounded-lg shadow-md ${theme === 'dark' ? 'bg-gray-800 border border-gray-600' : 'bg-white border border-gray-200'}`}>
                                 <div>
-                                  <span className="font-semibold text-sm">
+                                  <span className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                                     {format(
                                       new Date(payload[0].payload.date),
                                       "MMM d, yyyy",
@@ -472,7 +481,7 @@ const AdGroupPage: React.FC = () => {
                                   </span>
                                 </div>
                                 <div className="flex items-center justify-between space-x-4">
-                                  <span className="text-gray-500 text-xs">
+                                  <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                                     Quality Score
                                   </span>
                                   <span
@@ -488,10 +497,10 @@ const AdGroupPage: React.FC = () => {
                                   </span>
                                 </div>
                                 <div className="flex items-center justify-between space-x-4">
-                                  <span className="text-gray-600 text-xs">
+                                  <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                                     Keywords:
                                   </span>
-                                  <span className="font-medium text-sm text-gray-900">
+                                  <span className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                                     {payload[0].payload.keywordCount}
                                   </span>
                                 </div>
@@ -544,7 +553,7 @@ const AdGroupPage: React.FC = () => {
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-gray-500">
+                  <div className={`h-full flex items-center justify-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                     {isLoadingScores ? (
                       <SkeletonLoader className="h-6 w-48" />
                     ) : (
@@ -556,8 +565,8 @@ const AdGroupPage: React.FC = () => {
             </div>
 
             {/* Bottom 5 Keywords */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4">
+            <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow p-6`}>
+              <h2 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 Bottom 5 Keywords (by QS)
               </h2>
               {bottomKeywords.length > 0 ? (
@@ -565,14 +574,14 @@ const AdGroupPage: React.FC = () => {
                   {bottomKeywords.map((keyword) => (
                     <div
                       key={keyword.id}
-                      className="flex items-center p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
+                      className={`flex items-center p-3 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} rounded-lg transition-colors duration-200 cursor-pointer`}
                       onClick={() =>
                         navigate(
                           `/adgroups/${adGroupId}/keywords/${keyword.id}`,
                         )
                       }
                     >
-                      <div className="w-1/4 font-medium text-blue-600 hover:text-blue-800 truncate pr-4">
+                      <div className={`w-1/4 font-medium ${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} truncate pr-4`}>
                         {keyword.keyword}
                       </div>
                       <div className="flex-1 flex items-center gap-4">
@@ -587,10 +596,10 @@ const AdGroupPage: React.FC = () => {
                           <span
                             className={`inline-flex items-center justify-center w-14 px-2.5 py-1 rounded-full text-xs font-medium ${
                               keyword.avgQs >= 7
-                                ? "bg-green-100 text-green-800"
+                                ? `${theme === 'dark' ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-800'}`
                                 : keyword.avgQs >= 4
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-red-100 text-red-800"
+                                  ? `${theme === 'dark' ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-800'}`
+                                  : `${theme === 'dark' ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-800'}`
                             }`}
                           >
                             {keyword.avgQs.toFixed(1)}
@@ -601,7 +610,7 @@ const AdGroupPage: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-gray-500 text-center py-4">
+                <div className={`text-center py-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                   {isLoadingKeywords ? (
                     <SkeletonLoader className="h-6 w-48 mx-auto" />
                   ) : (
@@ -612,10 +621,10 @@ const AdGroupPage: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="p-4 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900">Keywords</h2>
-              <p className="mt-1 text-sm text-gray-500">
+          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow overflow-hidden`}>
+            <div className={`p-4 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} border-b`}>
+              <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Keywords</h2>
+              <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                 {isLoadingKeywords
                   ? "Loading..."
                   : `${keywordsData?.data?.keywords?.length || 0} keywords found`}
@@ -626,37 +635,37 @@ const AdGroupPage: React.FC = () => {
               <div className="p-6">
                 <div className="animate-pulse space-y-4">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="h-12 bg-gray-100 rounded"></div>
+                    <div key={i} className={`h-12 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} rounded`}></div>
                   ))}
                 </div>
               </div>
             ) : keywordsData?.data?.keywords &&
               keywordsData.data.keywords.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className={`min-w-full ${theme === 'dark' ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                  <thead className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
                     <tr>
                       <th
                         scope="col"
-                        className="px-6 py-3 w-1/6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className={`px-6 py-3 w-1/6 text-left text-xs font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}
                       >
                         Keyword
                       </th>
                       <th
                         scope="col"
-                        className="px-6 py-3 w-1/2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className={`px-6 py-3 w-1/2 text-left text-xs font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}
                       >
                         QS Trend
                       </th>
                       <th
                         scope="col"
-                        className="px-6 py-3 w-1/6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className={`px-6 py-3 w-1/6 text-left text-xs font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}
                       >
                         Avg QS
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className={`${theme === 'dark' ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'}`}>
                     {keywordsData?.data?.keywords?.map(
                       (keyword: KeywordDto) => {
                         const scores = keyword.scores || [];
@@ -671,7 +680,7 @@ const AdGroupPage: React.FC = () => {
                         return (
                           <tr
                             key={keyword.id}
-                            className="hover:bg-gray-50 cursor-pointer"
+                            className={`cursor-pointer transition-colors duration-200 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}
                             onClick={() =>
                               navigate(
                                 `/adgroups/${adGroupId}/keywords/${keyword.id}`,
@@ -680,7 +689,7 @@ const AdGroupPage: React.FC = () => {
                           >
                             <td className="px-6 py-4 w-1/4 whitespace-nowrap">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-gray-900 truncate">
+                                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'} truncate`}>
                                   {keyword.keyword}
                                 </span>
                                 <div className="relative group">
@@ -690,13 +699,13 @@ const AdGroupPage: React.FC = () => {
                                     title={keyword.status}
                                   ></span>
                                   <div
-                                    className={`cursor-pointer absolute z-10 hidden group-hover:block bg-gray-200 ${getStatusTextColor(keyword.status)} text-xs rounded px-3 py-2 -mt-8 -ml-2`}
+                                    className={`cursor-pointer absolute z-10 hidden group-hover:block ${theme === 'dark' ? 'bg-gray-900 text-gray-200' : 'bg-gray-200 text-gray-800'} ${getStatusTextColor(keyword.status)} text-xs rounded px-3 py-2 -mt-8 -ml-2`}
                                   >
                                     {keyword.status}
                                   </div>
                                 </div>
                               </div>
-                              <div className="text-xs text-gray-500 mt-1">
+                              <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                                 ID: {keyword.id}
                               </div>
                             </td>
@@ -713,16 +722,16 @@ const AdGroupPage: React.FC = () => {
                                 <span
                                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                     avgQs >= 7
-                                      ? "bg-green-100 text-green-800"
+                                      ? `${theme === 'dark' ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-800'}`
                                       : avgQs >= 4
-                                        ? "bg-yellow-100 text-yellow-800"
-                                        : "bg-red-100 text-red-800"
+                                        ? `${theme === 'dark' ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-800'}`
+                                        : `${theme === 'dark' ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-800'}`
                                   }`}
                                 >
                                   {avgQs.toFixed(1)}
                                 </span>
                               ) : (
-                                <span className="text-gray-500 text-sm">
+                                <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-sm`}>
                                   N/A
                                 </span>
                               )}
@@ -735,7 +744,7 @@ const AdGroupPage: React.FC = () => {
                 </table>
               </div>
             ) : (
-              <div className="p-6 text-center text-gray-500">
+              <div className={`p-6 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                 No keywords found for this ad group.
               </div>
             )}

@@ -85,12 +85,14 @@ export const CampaignSparkline: React.FC<CampaignSparklineProps> = ({
         if (existingWeek) {
           existingWeek.qs += data.qs;
           existingWeek.count++;
-          existingWeek.adGroupCount = data.adGroupCount;
+          data.adGroupCount > 0 && (existingWeek.adGroupCount = data.adGroupCount);
         } else {
+          let count = 0
+          data.adGroupCount > 0 && (count = data.adGroupCount);
           weeklyData.push({
             date: weekStart,
             qs: data.qs,
-            adGroupCount: data.adGroupCount,
+            adGroupCount: count,
             count: 1,
           });
         }
