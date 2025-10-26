@@ -118,10 +118,10 @@ export const AccountSparkline: React.FC<AccountSparklineProps> = ({
   if (!scores || scores.length === 0) {
     return (
       <div
-        className="flex items-center justify-center text-gray-400 text-xs"
+        className="flex items-center justify-center text-gray-400 text-sm italic"
         style={{ width, height }}
       >
-        Account has no Campaigns!
+        This Account has no Campaigns!
       </div>
     );
   }
@@ -210,13 +210,17 @@ export const AccountSparkline: React.FC<AccountSparklineProps> = ({
     <div style={{ width, height }} className="flex items-center">
       <div className="flex-1 h-full">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart
+          <LineChart
             data={processedData}
             margin={{ top: 2, right: 2, bottom: 2, left: 2 }}
           >
             <XAxis dataKey="date" hide={true} />
             <YAxis domain={[0, 10]} hide={true} />
             <Tooltip
+              position={{
+                y: -40,
+              }}
+              offset={10}
               content={<CustomTooltip />}
               cursor={{
                 stroke: theme === "dark" ? "#4B5563" : "#E5E7EB",
@@ -224,23 +228,75 @@ export const AccountSparkline: React.FC<AccountSparklineProps> = ({
               }}
               wrapperStyle={{ zIndex: 1000 }}
             />
-            <Bar
-              dataKey="qs"
-              barSize={20}
-              fill={theme === "dark" ? "#3B82F6" : "#3B82F6"}
-              fillOpacity={theme === "dark" ? 0.2 : 0.7}
-              radius={[2, 2, 0, 0]}
-            />
             <Line
               type="monotone"
               dataKey="qs"
               stroke="#3B82F6"
               strokeWidth={2}
-              dot={false}
+              dot={(props) => {
+                const { cx, cy, payload } = props;
+                const qsValue = payload.qs;
+                // Show dot only for non-zero values (make zero dots invisible)
+                if (qsValue === 0) {
+                  return (
+                    <circle
+                      key={`dot-${payload.date}-${qsValue}`}
+                      cx={cx}
+                      cy={cy}
+                      r={2}
+                      fill="#3B82F6"
+                      stroke={theme === "light" ? "#1e40af" : "#fff"}
+                      strokeWidth={1}
+                      opacity={0}
+                    />
+                  );
+                }
+                return (
+                  <circle
+                    key={`dot-${payload.date}-${qsValue}`}
+                    cx={cx}
+                    cy={cy}
+                    r={2}
+                    fill="#3B82F6"
+                    stroke={theme === "light" ? "#1e40af" : "#fff"}
+                    strokeWidth={1}
+                  />
+                );
+              }}
+              activeDot={(props) => {
+                const { cx, cy, payload } = props;
+                const qsValue = payload.qs;
+                // Show active dot only for non-zero values
+                if (qsValue === 0) {
+                  return (
+                    <circle
+                      key={`active-dot-${payload.date}-${qsValue}`}
+                      cx={cx}
+                      cy={cy}
+                      r={4}
+                      fill="#3B82F6"
+                      stroke={theme === "light" ? "#1e40af" : "#fff"}
+                      strokeWidth={2}
+                      opacity={0}
+                    />
+                  );
+                }
+                return (
+                  <circle
+                    key={`active-dot-${payload.date}-${qsValue}`}
+                    cx={cx}
+                    cy={cy}
+                    r={4}
+                    fill="#3B82F6"
+                    stroke={theme === "light" ? "#1e40af" : "#fff"}
+                    strokeWidth={2}
+                  />
+                );
+              }}
               isAnimationActive={false}
               connectNulls={true}
             />
-          </ComposedChart>
+          </LineChart>
         </ResponsiveContainer>
       </div>
     </div>

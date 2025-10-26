@@ -12,7 +12,6 @@ import {
   format,
   parse,
   subDays,
-  isWithinInterval,
   addDays,
   startOfWeek,
   isSameWeek,
@@ -175,17 +174,74 @@ export const CampaignSparkline: React.FC<CampaignSparklineProps> = ({
               dataKey="qs"
               stroke="#3b82f6"
               strokeWidth={2}
-              dot={false}
-              activeDot={{
-                r: 4,
-                fill: "#3b82f6",
-                stroke: "#fff",
-                strokeWidth: 2,
+              dot={(props) => {
+                const { cx, cy, payload } = props;
+                const qsValue = payload.qs;
+                // Show dot only for non-zero values (make zero dots invisible)
+                if (qsValue === 0) {
+                  return (
+                    <circle
+                      key={`dot-${payload.date}-${qsValue}`}
+                      cx={cx}
+                      cy={cy}
+                      r={2}
+                      fill="#3b82f6"
+                      stroke={theme === "light" ? "#1e40af" : "#fff"}
+                      strokeWidth={1}
+                      opacity={0}
+                    />
+                  );
+                }
+                return (
+                  <circle
+                    key={`dot-${payload.date}-${qsValue}`}
+                    cx={cx}
+                    cy={cy}
+                    r={2}
+                    fill="#3b82f6"
+                    stroke={theme === "light" ? "#1e40af" : "#fff"}
+                    strokeWidth={1}
+                  />
+                );
+              }}
+              activeDot={(props) => {
+                const { cx, cy, payload } = props;
+                const qsValue = payload.qs;
+                // Show active dot only for non-zero values
+                if (qsValue === 0) {
+                  return (
+                    <circle
+                      key={`active-dot-${payload.date}-${qsValue}`}
+                      cx={cx}
+                      cy={cy}
+                      r={4}
+                      fill="#3b82f6"
+                      stroke={theme === "light" ? "#1e40af" : "#fff"}
+                      strokeWidth={2}
+                      opacity={0}
+                    />
+                  );
+                }
+                return (
+                  <circle
+                    key={`active-dot-${payload.date}-${qsValue}`}
+                    cx={cx}
+                    cy={cy}
+                    r={4}
+                    fill="#3b82f6"
+                    stroke={theme === "light" ? "#1e40af" : "#fff"}
+                    strokeWidth={2}
+                  />
+                );
               }}
             />
             <XAxis dataKey="date" hide />
             <YAxis hide domain={[0, 10]} />
             <Tooltip
+              position={{
+                y: -40,
+              }}
+              offset={10}
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
                   const qsValue = Number(payload[0].value);
