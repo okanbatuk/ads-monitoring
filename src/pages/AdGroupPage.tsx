@@ -4,6 +4,7 @@ import {
   useAdGroup,
   useAdGroupScores,
   useAdGroupKeywords,
+  useAccount,
 } from "../services/api";
 import KeywordSparkline from "../components/KeywordSparkline";
 import { KeywordDto } from "@/types/api.types";
@@ -128,6 +129,15 @@ const AdGroupPage: React.FC = () => {
     refetch: refetchKeywords,
   } = useAdGroupKeywords(adGroupId!, { enabled: true });
 
+  const campaign = adGroupResponse?.data?.campaign;
+  const account = adGroupResponse?.data?.campaign?.account;
+  const mccId = account?.parentId;
+
+  // Fetch data
+  const { data: accountData, isLoading: isLoadingAccount } = useAccount(
+    mccId?.toString() || "",
+  );
+
   // Keep track of whether we've requested keywords for the tab
   const [keywordsTabLoaded, setKeywordsTabLoaded] = useState(false);
 
@@ -143,6 +153,8 @@ const AdGroupPage: React.FC = () => {
     adGroupError ||
     scoresError ||
     (activeTab === "keywords" ? keywordsError : null);
+
+
 
   // Handle keywords tab click
   const handleKeywordsTabClick = () => {
@@ -251,7 +263,9 @@ const AdGroupPage: React.FC = () => {
 
   const keywords = keywordsData?.data?.keywords || [];
   const totalKeywords = keywordsData?.data?.total || 0;
-
+  const manager = accountData?.data?.name;
+  
+  
   // Filter keywords by search term for Keywords tab
   const filteredKeywords = keywords.filter(keyword =>
     keywordsSearchTerm.length > 2 ? keyword.keyword.toLowerCase().includes(keywordsSearchTerm.toLowerCase()) : true
@@ -334,35 +348,46 @@ const AdGroupPage: React.FC = () => {
     <div className={`min-h-screen p-6 ${theme === "light" && "bg-gray-50"}`}>
       <div className="max-w-7xl mx-auto">
         {/* Header with breadcrumb */}
-        <div className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} rounded-lg shadow p-6 mb-8`}>
-          <nav className="flex mb-4" aria-label="Breadcrumb">
-            <ol className="inline-flex items-center space-x-1 md:space-x-2">
-              <li>
-                <Link to="/" className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
-                  Home
-                </Link>
-              </li>
-              <li className="flex items-center">
-                <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
-                <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>MCC Account</span>
-              </li>
-              <li className="flex items-center">
-                <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
-                <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>Sub Account</span>
-              </li>
-              <li className="flex items-center">
-                <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
-                <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>Campaign</span>
-              </li>
-              <li className="flex items-center">
-                <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
-                <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-700'} font-medium`}>
-                  {adGroup?.name}
-                </span>
-              </li>
-            </ol>
-          </nav>
+        <nav className="flex mb-4" aria-label="Breadcrumb">
+          <ol className="inline-flex items-center space-x-1 md:space-x-2">
+            <li>
+              <Link to="/" className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
+                Home
+              </Link>
+            </li>
+            {mccId && <li className="flex items-center">
+              <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{'>'}</span>
+              <Link to={`/mcc/${mccId}`} className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
+                {manager}
+              </Link>
+            </li>}
+            <li className="flex items-center">
+              <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{'>'}</span>
+              <Link to={`mcc/${mccId}/sub/${account?.id}`} className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
+                {account?.name}
+              </Link>
+            </li>
+            <li className="flex items-center">
+              <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{'>'}</span>
+              <Link to={`/accounts/${account?.id}/campaigns/${campaign?.id}`} className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
+                {campaign?.name}
+              </Link>
+            </li>
+            <li className="flex items-center">
+              <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{'>'}</span>
+              <span className={`cursor-pointer hover:text-blue-300 hover:underline transition-colors duration-200 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} onClick={() => navigate(`/accounts/${account?.id}/campaigns/${campaign?.id}#adgroups`)}>Ad Group</span>
+            </li>
+            <li className="flex items-center">
+              <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{'>'}</span>
+              <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-700'} font-medium`}>
+                {adGroup?.name}
+              </span>
+            </li>
+          </ol>
+        </nav>
 
+
+        <div className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} rounded-lg shadow p-6 mb-8`}>
           <div className="flex justify-between items-start">
             <div>
               <div className="flex items-center gap-3">
@@ -391,10 +416,10 @@ const AdGroupPage: React.FC = () => {
                   <span className="font-medium">Quality Score: </span>
                   <span
                     className={`ml-1 font-semibold ${currentScore >= 7
-                        ? "text-green-600"
-                        : currentScore >= 4
-                          ? "text-yellow-600"
-                          : "text-red-600"
+                      ? "text-green-600"
+                      : currentScore >= 4
+                        ? "text-yellow-600"
+                        : "text-red-600"
                       }`}
                   >
                     {currentScore.toFixed(1)}/10
@@ -430,8 +455,8 @@ const AdGroupPage: React.FC = () => {
             <button
               onClick={() => setActiveTab("overview")}
               className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === "overview"
-                  ? `${theme === 'dark' ? 'border-green-500 text-green-400' : 'border-green-500 text-green-600'}`
-                  : `${theme === 'dark' ? 'border-transparent text-gray-400 hover:text-green-400 hover:border-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
+                ? `${theme === 'dark' ? 'border-green-500 text-green-400' : 'border-green-500 text-green-600'}`
+                : `${theme === 'dark' ? 'border-transparent text-gray-400 hover:text-green-400 hover:border-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
                 }`}
             >
               Overview
@@ -439,8 +464,8 @@ const AdGroupPage: React.FC = () => {
             <button
               onClick={handleKeywordsTabClick}
               className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === "keywords"
-                  ? `${theme === 'dark' ? 'border-green-500 text-green-400' : 'border-green-500 text-green-600'}`
-                  : `${theme === 'dark' ? 'border-transparent text-gray-400 hover:text-green-400 hover:border-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
+                ? `${theme === 'dark' ? 'border-green-500 text-green-400' : 'border-green-500 text-green-600'}`
+                : `${theme === 'dark' ? 'border-transparent text-gray-400 hover:text-green-400 hover:border-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
                 }`}
             >
               Keywords ({totalKeywords})
@@ -456,8 +481,8 @@ const AdGroupPage: React.FC = () => {
                 key={range.days}
                 onClick={() => setTimeRange(range.days)}
                 className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${timeRange === range.days
-                    ? `${theme === 'dark' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-blue-100 text-blue-700 border-blue-300'}`
-                    : `${theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`
+                  ? `${theme === 'dark' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-blue-100 text-blue-700 border-blue-300'}`
+                  : `${theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`
                   } ${index === 0 ? "rounded-l-md" : ""} ${index === TIME_RANGES.length - 1 ? "rounded-r-md" : ""
                   } border`}
               >
@@ -522,10 +547,10 @@ const AdGroupPage: React.FC = () => {
                                   </span>
                                   <span
                                     className={`font-medium text-sm ${qsValue >= 8
-                                        ? "text-green-600"
-                                        : qsValue >= 5
-                                          ? "text-yellow-600"
-                                          : "text-red-600"
+                                      ? "text-green-600"
+                                      : qsValue >= 5
+                                        ? "text-yellow-600"
+                                        : "text-red-600"
                                       }`}
                                   >
                                     {displayQs}
@@ -668,8 +693,8 @@ const AdGroupPage: React.FC = () => {
                   </h2>
                   <button
                     className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-200 ${theme === "dark"
-                        ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
-                        : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                      ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
+                      : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                       }`}
                     onClick={() => setShowBestKeywords(!showBestKeywords)}
                     title={`Switch to ${showBestKeywords ? "Worst" : "Best"} 5 Keywords`}
@@ -762,10 +787,10 @@ const AdGroupPage: React.FC = () => {
                             <div className="flex items-center">
                               <span
                                 className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${keyword.avgQs >= 7
-                                    ? `${theme === 'dark' ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-800'}`
-                                    : keyword.avgQs >= 4
-                                      ? `${theme === 'dark' ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-800'}`
-                                      : `${theme === 'dark' ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-800'}`
+                                  ? `${theme === 'dark' ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-800'}`
+                                  : keyword.avgQs >= 4
+                                    ? `${theme === 'dark' ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-800'}`
+                                    : `${theme === 'dark' ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-800'}`
                                   }`}
                               >
                                 {keyword.avgQs.toFixed(1)}
@@ -786,8 +811,8 @@ const AdGroupPage: React.FC = () => {
                                 return nonZeroScores.length >= 2 ? (
                                   <span
                                     className={`ml-3 inline-flex items-center text-sm font-medium ${trendPercentage >= 0
-                                        ? theme === 'dark' ? 'text-green-400' : 'text-green-600'
-                                        : theme === 'dark' ? 'text-red-400' : 'text-red-600'
+                                      ? theme === 'dark' ? 'text-green-400' : 'text-green-600'
+                                      : theme === 'dark' ? 'text-red-400' : 'text-red-600'
                                       }`}
                                   >
                                     {trendPercentage >= 0 ? '↑' : '↓'}{" "}
@@ -881,145 +906,145 @@ const AdGroupPage: React.FC = () => {
 
                 <div className="overflow-x-auto">
                   {filteredKeywords.length > 0 ? (
-                  <table className={`min-w-full ${theme === 'dark' ? 'divide-gray-700' : 'divide-gray-200'}`}>
-                    <thead className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                      <tr>
-                        <th
-                          scope="col"
-                          className={`px-6 py-3 w-1/6 text-left text-xs font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}
-                        >
-                          Keyword
-                        </th>
-                        <th
-                          scope="col"
-                          className={`px-6 py-3 w-2/3 text-left text-xs font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}
-                        >
-                          QS Trend
-                        </th>
-                        <th
-                          scope="col"
-                          className={`px-6 py-3 w-1/6 text-left text-xs font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}
-                        >
-                          Avg QS
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className={`${theme === 'dark' ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'}`}>
-                      {filteredKeywords.map(
-                        (keyword: KeywordDto) => {
-                          const scores = keyword.scores || [];
-                          // Calculate average QS from non-zero scores
-                          const nonZeroScores = scores.filter((s) => s.qs > 0);
-                          const avgQs =
-                            nonZeroScores.length > 0
-                              ? nonZeroScores.reduce((sum, s) => sum + s.qs, 0) /
-                              nonZeroScores.length
-                              : 0;
+                    <table className={`min-w-full ${theme === 'dark' ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                      <thead className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                        <tr>
+                          <th
+                            scope="col"
+                            className={`px-6 py-3 w-1/6 text-left text-xs font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}
+                          >
+                            Keyword
+                          </th>
+                          <th
+                            scope="col"
+                            className={`px-6 py-3 w-2/3 text-left text-xs font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}
+                          >
+                            QS Trend
+                          </th>
+                          <th
+                            scope="col"
+                            className={`px-6 py-3 w-1/6 text-left text-xs font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}
+                          >
+                            Avg QS
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className={`${theme === 'dark' ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'}`}>
+                        {filteredKeywords.map(
+                          (keyword: KeywordDto) => {
+                            const scores = keyword.scores || [];
+                            // Calculate average QS from non-zero scores
+                            const nonZeroScores = scores.filter((s) => s.qs > 0);
+                            const avgQs =
+                              nonZeroScores.length > 0
+                                ? nonZeroScores.reduce((sum, s) => sum + s.qs, 0) /
+                                nonZeroScores.length
+                                : 0;
 
-                          // Calculate trend from scores (current vs previous non-zero value)
-                          let trendPercentage = 0;
-                          if (nonZeroScores.length >= 2) {
-                            const current = nonZeroScores[nonZeroScores.length - 1].qs;
-                            const previous = nonZeroScores[nonZeroScores.length - 2].qs;
-                            trendPercentage =
-                              previous !== 0 ? ((current - previous) / previous) * 100 : 0;
-                          }
+                            // Calculate trend from scores (current vs previous non-zero value)
+                            let trendPercentage = 0;
+                            if (nonZeroScores.length >= 2) {
+                              const current = nonZeroScores[nonZeroScores.length - 1].qs;
+                              const previous = nonZeroScores[nonZeroScores.length - 2].qs;
+                              trendPercentage =
+                                previous !== 0 ? ((current - previous) / previous) * 100 : 0;
+                            }
 
-                          return (
-                            <tr
-                              key={keyword.id}
-                              className={`cursor-pointer transition-colors duration-200 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}
-                              onClick={() =>
-                                navigate(
-                                  `/adgroups/${adGroupId}/keywords/${keyword.id}`,
-                                )
-                              }
-                            >
-                              <td className="px-6 py-4 w-1/6 whitespace-nowrap">
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-sm font-medium truncate inline-block max-w-[150px] ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} title={keyword.keyword}>
-                                    {keyword.keyword}
-                                  </span>
-                                  <div className="relative group">
-                                    <span
-                                      className={`inline-block w-2 h-2 rounded-full ${getStatusColor(keyword.status)}`}
-                                      style={{ marginBottom: "0.25rem" }}
-                                      title={keyword.status}
-                                    ></span>
-                                    <div
-                                      className={`cursor-pointer absolute z-10 hidden group-hover:block ${theme === 'dark' ? 'bg-gray-900 text-gray-200' : 'bg-gray-200 text-gray-800'} ${getStatusTextColor(keyword.status)} text-xs rounded px-3 py-2 -mt-8 -ml-2`}
-                                    >
-                                      {keyword.status}
+                            return (
+                              <tr
+                                key={keyword.id}
+                                className={`cursor-pointer transition-colors duration-200 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}
+                                onClick={() =>
+                                  navigate(
+                                    `/adgroups/${adGroupId}/keywords/${keyword.id}`,
+                                  )
+                                }
+                              >
+                                <td className="px-6 py-4 w-1/6 whitespace-nowrap">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`text-sm font-medium truncate inline-block max-w-[150px] ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} title={keyword.keyword}>
+                                      {keyword.keyword}
+                                    </span>
+                                    <div className="relative group">
+                                      <span
+                                        className={`inline-block w-2 h-2 rounded-full ${getStatusColor(keyword.status)}`}
+                                        style={{ marginBottom: "0.25rem" }}
+                                        title={keyword.status}
+                                      ></span>
+                                      <div
+                                        className={`cursor-pointer absolute z-10 hidden group-hover:block ${theme === 'dark' ? 'bg-gray-900 text-gray-200' : 'bg-gray-200 text-gray-800'} ${getStatusTextColor(keyword.status)} text-xs rounded px-3 py-2 -mt-8 -ml-2`}
+                                      >
+                                        {keyword.status}
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                                <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                                  ID: {keyword.id}
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 w-2/3 whitespace-nowrap">
-                                <div className="w-full min-w-[200px]">
-                                  <KeywordSparkline
-                                    width="100%"
-                                    scores={scores}
-                                    timeRange={timeRange}
-                                  />
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 w-1/6 whitespace-nowrap">
-                                <div className="flex items-center">
-                                  {avgQs > 0 ? (
-                                    <span
-                                      className={`px-3 py-1 rounded-full text-sm font-medium ${avgQs >= 7
+                                  <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                    ID: {keyword.id}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 w-2/3 whitespace-nowrap">
+                                  <div className="w-full min-w-[200px]">
+                                    <KeywordSparkline
+                                      width="100%"
+                                      scores={scores}
+                                      timeRange={timeRange}
+                                    />
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 w-1/6 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    {avgQs > 0 ? (
+                                      <span
+                                        className={`px-3 py-1 rounded-full text-sm font-medium ${avgQs >= 7
                                           ? `${theme === 'dark' ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-800'}`
                                           : avgQs >= 4
                                             ? `${theme === 'dark' ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-800'}`
                                             : `${theme === 'dark' ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-800'}`
-                                        }`}
-                                    >
-                                      {avgQs.toFixed(1)}
-                                    </span>
-                                  ) : (
-                                    <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-sm`}>
-                                      N/A
-                                    </span>
-                                  )}
-                                  {nonZeroScores.length >= 2 ? (
-                                    <span
-                                      className={`ml-3 inline-flex items-center text-sm font-medium ${trendPercentage >= 0
+                                          }`}
+                                      >
+                                        {avgQs.toFixed(1)}
+                                      </span>
+                                    ) : (
+                                      <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-sm`}>
+                                        N/A
+                                      </span>
+                                    )}
+                                    {nonZeroScores.length >= 2 ? (
+                                      <span
+                                        className={`ml-3 inline-flex items-center text-sm font-medium ${trendPercentage >= 0
                                           ? theme === 'dark' ? 'text-green-400' : 'text-green-600'
                                           : theme === 'dark' ? 'text-red-400' : 'text-red-600'
-                                        }`}
-                                    >
-                                      {trendPercentage >= 0 ? '↑' : '↓'}{" "}
-                                      {Math.abs(trendPercentage).toFixed(1)}%
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        },
-                      )}
-                    </tbody>
-                  </table>
-                ) : (
-                <div className={`p-6 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                  No keywords found matching {keywordsSearchTerm}.
+                                          }`}
+                                      >
+                                        {trendPercentage >= 0 ? '↑' : '↓'}{" "}
+                                        {Math.abs(trendPercentage).toFixed(1)}%
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          },
+                        )}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className={`p-6 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                      No keywords found matching {keywordsSearchTerm}.
+                    </div>
+                  )}
                 </div>
-            )}
-                </div>
-                </div>
-                ) : (
-                <div className={`p-6 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+              </div>
+            ) : (
+              <div className={`p-6 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                 No keywords found for this ad group.
-                </div>
-            )}
               </div>
             )}
           </div>
+        )}
+      </div>
     </div>
-      );
+  );
 };
 
-      export default AdGroupPage;
+export default AdGroupPage;

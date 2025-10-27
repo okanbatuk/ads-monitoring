@@ -1,7 +1,7 @@
 import { addDays, format, parse, startOfWeek, subDays } from "date-fns";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FiArrowDownRight, FiArrowUpRight } from "react-icons/fi";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Link } from "react-router-dom";
 import {
   Area,
@@ -85,6 +85,7 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 const CampaignPage = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const { theme } = useTheme();
   const [timeRange, setTimeRange] = useState(30);
@@ -351,6 +352,8 @@ const CampaignPage = () => {
       });
     });
 
+
+
     // Generate data points for the selected time range
     const today = new Date();
     const dateArray = Array.from({ length: timeRange }, (_, i) => {
@@ -374,6 +377,13 @@ const CampaignPage = () => {
       };
     });
   }, [scoresData, timeRange]);
+
+  const hash = location.hash;
+
+  useEffect(() => {
+    if (hash === '#adgroups')
+      setActiveTab('adgroups');
+  }, [hash]);
 
   // Show loading state
   if (isLoading) {
@@ -442,33 +452,34 @@ const CampaignPage = () => {
   return (
     <div className={`min-h-screen p-6 ${theme === "light" && "bg-gray-50"}`}>
       <div className="max-w-7xl mx-auto">
+        <nav className="flex mb-4" aria-label="Breadcrumb">
+          <ol className="inline-flex items-center space-x-1 md:space-x-2">
+            <li>
+              <Link to="/" className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
+                Home
+              </Link>
+            </li>
+            <li className="flex items-center">
+              <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
+              <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>MCC Account</span>
+            </li>
+            <li className="flex items-center">
+              <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
+              <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>Sub Account</span>
+            </li>
+            <li className="flex items-center">
+              <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
+              <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-700'} font-medium`}>
+                {campaign?.name || "Campaign"}
+              </span>
+            </li>
+          </ol>
+        </nav>
         {/* Header */}
         <div
           className={`rounded-lg shadow p-6 mb-8 ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}
         >
-          <nav className="flex mb-4" aria-label="Breadcrumb">
-            <ol className="inline-flex items-center space-x-1 md:space-x-2">
-              <li>
-                <Link to="/" className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
-                  Home
-                </Link>
-              </li>
-              <li className="flex items-center">
-                <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
-                <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>MCC Account</span>
-              </li>
-              <li className="flex items-center">
-                <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
-                <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>Sub Account</span>
-              </li>
-              <li className="flex items-center">
-                <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
-                <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-700'} font-medium`}>
-                  {campaign?.name || "Campaign"}
-                </span>
-              </li>
-            </ol>
-          </nav>
+
 
           <div>
             <div className="flex items-center gap-3">
@@ -960,7 +971,7 @@ const CampaignPage = () => {
                   <div className={`p-4`}>
                     <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Ad Groups</h2>
                     <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                        {adGroupCount} ad groups found
+                      {adGroupCount} ad groups found
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

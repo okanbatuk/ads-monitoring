@@ -51,6 +51,7 @@ export interface CampaignDto {
   name: string;
   status: string;
   accountId: string;
+  account?: AccountDto
   scores?: CampaignScoreDto[];
 }
 
@@ -73,6 +74,7 @@ export interface AdGroupDto {
   name: string;
   status: string;
   campaignId: string;
+  campaign?: CampaignDto;
   scores?: AdGroupScoreDto[];
 }
 
@@ -94,6 +96,7 @@ export interface KeywordDto {
   status:string;
   keyword: string;
   adGroupId: string;
+  adGroup?: AdGroupDto;
   scores?: KeywordScoreDto[];
 }
 
