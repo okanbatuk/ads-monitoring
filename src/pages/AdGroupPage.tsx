@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   useAdGroup,
@@ -211,8 +211,11 @@ const AdGroupPage: React.FC = () => {
     scoresData.data.scores.forEach((score) => {
       // Parse the date string from the API (format: 'dd.MM.yyyy')
       const parsedDate = parse(score.date, "dd.MM.yyyy", new Date());
-      const dateKey = format(parsedDate, "yyyy-MM-dd");
-      scoreMap.set(dateKey, { qs: score.qs, keywordCount: score.keywordCount });
+      // Only include dates within the selected time range
+      if (parsedDate >= startDate) {
+        const dateKey = format(parsedDate, "yyyy-MM-dd");
+        scoreMap.set(dateKey, { qs: score.qs, keywordCount: score.keywordCount });
+      }
     });
 
     // Generate array of all dates in the time range
@@ -227,12 +230,12 @@ const AdGroupPage: React.FC = () => {
         date,
         timeRange >= 360 ? "MMM d, yyyy" : "MMM d",
       );
+      const scoreData = scoreMap.get(dateKey) || { qs: 0, keywordCount: 0 };
       return {
         axisDate: displayDate,
         date: dateKey,
-        qs: (scoreMap.get(dateKey) || { qs: 0, keywordCount: 0 }).qs,
-        keywordCount: (scoreMap.get(dateKey) || { qs: 0, keywordCount: 0 })
-          .keywordCount,
+        qs: scoreData.qs,
+        keywordCount: scoreData.keywordCount,
       };
     });
   }, [scoresData, timeRange]);
@@ -261,11 +264,19 @@ const AdGroupPage: React.FC = () => {
     };
   }, [scoresData]);
 
+
+  const hash = location.hash;
+
+  useEffect(() => {
+    if (hash === '#keywords')
+      setActiveTab('keywords');
+  }, [hash]);
+
   const keywords = keywordsData?.data?.keywords || [];
   const totalKeywords = keywordsData?.data?.total || 0;
   const manager = accountData?.data?.name;
-  
-  
+
+
   // Filter keywords by search term for Keywords tab
   const filteredKeywords = keywords.filter(keyword =>
     keywordsSearchTerm.length > 2 ? keyword.keyword.toLowerCase().includes(keywordsSearchTerm.toLowerCase()) : true
@@ -357,25 +368,27 @@ const AdGroupPage: React.FC = () => {
             </li>
             {mccId && <li className="flex items-center">
               <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{'>'}</span>
-              <Link to={`/mcc/${mccId}`} className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
+              <Link to={`/manager/${mccId}`} className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
                 {manager}
               </Link>
             </li>}
             <li className="flex items-center">
               <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{'>'}</span>
-              <Link to={`mcc/${mccId}/sub/${account?.id}`} className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
+              <Link to={`/account/${account?.id}`} className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
                 {account?.name}
               </Link>
             </li>
             <li className="flex items-center">
               <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{'>'}</span>
-              <Link to={`/accounts/${account?.id}/campaigns/${campaign?.id}`} className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
+              <Link to={`/account/${account?.id}/campaign/${campaign?.id}`} className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
                 {campaign?.name}
               </Link>
             </li>
             <li className="flex items-center">
               <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{'>'}</span>
-              <span className={`cursor-pointer hover:text-blue-300 hover:underline transition-colors duration-200 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} onClick={() => navigate(`/accounts/${account?.id}/campaigns/${campaign?.id}#adgroups`)}>Ad Group</span>
+              <Link to={`/account/${account?.id}/campaign/${campaign?.id}#adgroups`} className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
+                {'Ad Group'}
+              </Link>
             </li>
             <li className="flex items-center">
               <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{'>'}</span>
@@ -495,12 +508,14 @@ const AdGroupPage: React.FC = () => {
         {activeTab === "overview" ? (
           <div className="space-y-6">
             {/* QS Line Chart */}
-            <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow p-6`}>
-              <h2 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Quality Score Trend
-              </h2>
-              <div className="h-64">
-                {scores.length > 0 ? (
+
+            {scores.length > 0 && scores.some(score => score.qs > 0) ? (
+              <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow p-6`}>
+                <h2 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Quality Score Trend
+                </h2>
+                <div className="h-64">
+
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
                       data={scores}
@@ -670,17 +685,48 @@ const AdGroupPage: React.FC = () => {
                       />
                     </AreaChart>
                   </ResponsiveContainer>
-                ) : (
-                  <div className={`h-full flex items-center justify-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {isLoadingScores ? (
-                      <SkeletonLoader className="h-6 w-48" />
-                    ) : (
-                      "No score data available"
-                    )}
-                  </div>
-                )}
+
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className={`p-8 rounded-lg shadow mb-8 ${theme === "dark" ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"}`}>
+                <div className="text-center">
+                  <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-6 ${theme === "dark" ? "bg-gray-700" : "bg-gray-100"}`}>
+                    <svg
+                      className={`w-8 h-8 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className={`text-xl font-semibold mb-2 ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                    There is no quality score data for this ad group.
+                  </h3>
+                  <p className={`text-lg mb-4 ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}>
+                    Quality score data has not been calculated for this ad group.
+                  </p>
+                  <div className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+                    <p>Quality scores will be displayed here when they are calculated.</p>
+                    <p className="mt-1">Last updated: {format(new Date(), "MMM d, yyyy 'saat' h:mm a")}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 
+
+
+                  
+
+*/}
 
             {/* Best/Worst Keywords */}
             <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow p-6`}>
@@ -747,7 +793,7 @@ const AdGroupPage: React.FC = () => {
                           className={`cursor-pointer transition-colors duration-200 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}
                           onClick={() =>
                             navigate(
-                              `/adgroups/${adGroupId}/keywords/${keyword.id}`,
+                              `/adgroup/${adGroupId}/keyword/${keyword.id}`,
                             )
                           }
                         >
@@ -956,7 +1002,7 @@ const AdGroupPage: React.FC = () => {
                                 className={`cursor-pointer transition-colors duration-200 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}
                                 onClick={() =>
                                   navigate(
-                                    `/adgroups/${adGroupId}/keywords/${keyword.id}`,
+                                    `/adgroup/${adGroupId}/keyword/${keyword.id}`,
                                   )
                                 }
                               >

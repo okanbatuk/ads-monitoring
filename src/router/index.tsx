@@ -36,30 +36,38 @@ const router = createBrowserRouter([
             return null;
           }
           if (data?.total > 0) {
-            return redirect(`/mcc/${data.accounts[0].id}`);
+            const firstAccount = data.accounts[0];
+            // Check account type: false = MCC account, true = sub-account
+            if (firstAccount.type === false) {
+              // It's an MCC account
+              return redirect(`/manager/${firstAccount.id}`);
+            } else {
+              // It's a sub-account or individual account
+              return redirect(`/account/${firstAccount.id}`);
+            }
           }
           return null;
         },
         element: <GlobalDashboard />,
       },
       {
-        path: 'mcc/:mccId',
+        path: 'manager/:mccId',
         element: <MccAccountPage />,
       },
       {
-        path: 'mcc/:mccId/sub/:subAccountId',
+        path: 'account/:accountId',
         element: <MccSubAccountPage />,
       },
       {
-        path: 'accounts/:accoundId/campaigns/:campaignId',
+        path: 'account/:accountId/campaign/:campaignId',
         element: <CampaignPage />,
       },
       {
-        path: 'campaigns/:campaignId/adgroups/:adGroupId',
+        path: 'campaign/:campaignId/adgroup/:adGroupId',
         element: <AdGroupPage />,
       },
       {
-        path: 'adgroups/:adGroupId/keywords/:keywordId',
+        path: 'adgroup/:adGroupId/keyword/:keywordId',
         element: <KeywordPage />
       },
       {

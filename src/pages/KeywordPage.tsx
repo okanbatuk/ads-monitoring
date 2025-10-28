@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { useKeyword, useKeywordScores, useAdGroupKeywords } from '../services/api';
+import { useParams, useLocation, useNavigate, Link} from 'react-router-dom';
+import { useKeyword, useKeywordScores, useAdGroupKeywords, useAccount } from '../services/api';
 import KeywordSparkline from '../components/KeywordSparkline';
 import { format, parse, startOfWeek } from 'date-fns';
 import { ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, AreaChart, Area } from 'recharts';
@@ -64,9 +64,11 @@ const KeywordPage: React.FC = () => {
   const location = useLocation();
   const adGroupId = location.pathname.split('/')[2];
 
+
   // Fetch keyword data
   const { data: keywordData, isLoading: isLoadingKeyword } = useKeyword(keywordId || '');
   const keyword = keywordData?.data;
+  const mccId = keyword?.adGroup?.campaign?.account?.parentId;
 
   // Fetch keywords for the ad group
   const { data: keywordsData, isLoading: isLoadingKeywords } = useAdGroupKeywords(adGroupId, {
@@ -76,6 +78,12 @@ const KeywordPage: React.FC = () => {
 
   // Fetch keyword scores for the chart
   const { data: scoresData, isLoading: isLoadingScores } = useKeywordScores(keywordId || '', timeRange);
+
+  // Fetch data
+  const { data: accountData, isLoading: isLoadingAccount } = useAccount(
+    mccId?.toString() || "",
+  );
+  const account = accountData?.data;
 
   // Format scores for the chart with dynamic time range
   const chartData = useMemo<ChartDataPoint[]>(() => {
@@ -235,6 +243,70 @@ const KeywordPage: React.FC = () => {
   return (
     <div className={`min-h-screen p-6 ${theme === "light" && "bg-gray-50"}`}>
       <div className="max-w-7xl mx-auto">
+        {/* Breadcrumb Navigation */}
+        <nav className="flex mb-4" aria-label="Breadcrumb">
+          <ol className="inline-flex items-center space-x-1 md:space-x-2">
+            <li>
+              <Link to="/" className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
+                Home
+              </Link>
+            </li>
+            {keyword?.adGroup?.campaign?.account?.parentId && (
+              <li className="flex items-center">
+                <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{'>'}</span>
+                <Link 
+                  to={`/manager/${keyword.adGroup.campaign.account.parentId}`} 
+                  className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}
+                >
+                  {account?.name || 'Manager'}
+                </Link>
+              </li>
+            )}
+            <li className="flex items-center">
+              <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{'>'}</span>
+              <Link 
+                to={`/account/${keyword?.adGroup?.campaign?.account?.id}`} 
+                className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}
+              >
+                {keyword?.adGroup?.campaign?.account?.name || 'Sub Account'}
+              </Link>
+            </li>
+            <li className="flex items-center">
+              <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{'>'}</span>
+              <Link 
+                to={`/account/${keyword?.adGroup?.campaign?.account?.id}/campaign/${keyword?.adGroup?.campaign?.id}`} 
+                className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}
+              >
+                {keyword?.adGroup?.campaign?.name || 'Campaign'}
+              </Link>
+            </li>
+            <li className="flex items-center">
+              <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{'>'}</span>
+              <Link 
+                to={`/campaign/${keyword?.adGroup?.campaign?.id}/adgroup/${keyword?.adGroup?.id}`} 
+                className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}
+              >
+                {keyword?.adGroup?.name || 'Ad Group'}
+              </Link>
+            </li>
+            <li className="flex items-center">
+              <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{'>'}</span>
+              <Link 
+                to={`/campaign/${keyword?.adGroup?.campaign?.id}/adgroup/${keyword?.adGroup?.id}#keywords`} 
+                className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}
+              >
+                {'Keywords'}
+              </Link>
+            </li>
+            <li className="flex items-center">
+              <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{'>'}</span>
+              <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-700'} font-medium`}>
+                {keyword?.keyword || 'Keyword'}
+              </span>
+            </li>
+          </ol>
+        </nav>
+
         {/* Header Section */}
         <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow p-6 mb-8`}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -478,7 +550,7 @@ const KeywordPage: React.FC = () => {
                         <tr
                           key={kw.id}
                           className={`cursor-pointer transition-colors duration-200 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} ${kw.id === keywordId ? (theme === 'dark' ? 'bg-gray-700' : 'bg-blue-50') : ''}`}
-                          onClick={() => navigate(`/adgroups/${adGroupId}/keywords/${kw.id}`)}
+                          onClick={() => navigate(`/adgroup/${adGroupId}/keyword/${kw.id}`)}
                         >
                           <td className="px-6 py-4 w-1/6">
                             <div className="flex items-center gap-2">

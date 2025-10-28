@@ -104,7 +104,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   // Determine if the current route is active
   const isActive = (path: string | undefined) => {
     if (!path) return false;
-    const agPart = path.match(/\/adgroups\/(\d+)/)?.[0];
+    const agPart = path.match(/\/adgroup\/(\d+)/)?.[0];
     return (
       location.pathname === path ||
       location.pathname.startsWith(`${path}/`) ||

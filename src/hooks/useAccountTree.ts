@@ -13,11 +13,11 @@ export interface TreeNode {
   name: string;
   status?: string;
   children?: TreeNode[];
-  parentId: string | null; // null for root nodes (MCC accounts)
+  parentId: string | null;
   isExpanded?: boolean;
   isLoading?: boolean;
   hasChildren?: boolean;
-  isMcc?: boolean; // true if this is an MCC account (parentId === null)
+  isMcc?: boolean;
   path: string;
 }
 
@@ -28,21 +28,21 @@ const accountToTreeNode = (
   isMcc: boolean,
   expandedNodes: Set<string>,
 ): TreeNode => {
-  // For MCC accounts: /mcc/{accountId}
-  // For sub-accounts: /mcc/{mccId}/sub/{subAccountId}
-  const path = isMcc
-    ? `/mcc/${account.id}`
-    : `/mcc/${parentId?.replace("account-", "")}/sub/${account.id}`;
+  // Generate appropriate path based on account type
+  const path =
+    account.type === false
+      ? `/manager/${account.id}`
+      : `/account/${account.id}`;
 
   return {
     id: `account-${account.id}`,
-    type: isMcc ? "mcc" : "account",
+    type: account.type === false ? "mcc" : "account",
     name: account.name,
     status: account.status,
     parentId,
-    isMcc,
+    isMcc: account.type === false,
     path,
-    hasChildren: true, // Always true since we want to show the expand icon
+    hasChildren: true,
     isExpanded: expandedNodes.has(`account-${account.id}`),
     children: [],
   };
@@ -114,12 +114,25 @@ export const useAccountTree = (): UseAccountTreeReturn => {
   const fetchAccounts = useCallback(
     async (parentId: string | null): Promise<TreeNode[]> => {
       try {
-        // If it's a root level request, return the MCC accounts
+        // If it's a root level request, return both MCC and individual accounts
         if (parentId === null) {
           const accounts = mccResponse?.data?.accounts || [];
-          return accounts.map((account) =>
-            accountToTreeNode(account, null, true, expandedNodes),
-          );
+          // Separate MCC accounts (type: false) and individual accounts (type: true, parentId: null)
+          const mccAccounts = accounts
+            .filter((account) => account.type === false)
+            .map((account) =>
+              accountToTreeNode(account, null, true, expandedNodes),
+            );
+
+          const individualAccounts = accounts
+            .filter(
+              (account) => account.type === true && account.parentId === null,
+            )
+            .map((account) =>
+              accountToTreeNode(account, null, false, expandedNodes),
+            );
+
+          return [...mccAccounts, ...individualAccounts];
         }
 
         // For sub-accounts, use the cached data or fetch if needed
@@ -133,7 +146,6 @@ export const useAccountTree = (): UseAccountTreeReturn => {
           );
           subAccounts = response?.data?.subAccounts || [];
 
-          // Update cache
           setSubAccountsMap((prev) => ({
             ...prev,
             [mccId]: subAccounts,
@@ -150,7 +162,7 @@ export const useAccountTree = (): UseAccountTreeReturn => {
         return [];
       }
     },
-    [],
+    [mccResponse, expandedNodes],
   );
 
   // Fetch campaigns for an account
@@ -168,7 +180,7 @@ export const useAccountTree = (): UseAccountTreeReturn => {
           name: campaign.name,
           status: campaign.status,
           parentId: `account-${accountId}`,
-          path: `/accounts/${accountId}/campaigns/${campaign.id}`,
+          path: `/account/${accountId}/campaign/${campaign.id}`,
           hasChildren: true,
           isExpanded: false,
           children: [],
@@ -203,7 +215,7 @@ export const useAccountTree = (): UseAccountTreeReturn => {
           name: adGroup.name,
           status: adGroup.status,
           parentId: `campaign-${campaignId}`,
-          path: `/campaigns/${campaignId}/adgroups/${adGroup.id}`,
+          path: `/campaign/${campaignId}/adgroup/${adGroup.id}`,
           hasChildren: false,
           isExpanded: false,
         }));
@@ -239,7 +251,7 @@ export const useAccountTree = (): UseAccountTreeReturn => {
             : node.id;
           newChildren = await fetchAccounts(mccId);
         } else if (node.type === "account") {
-          // For sub-accounts, fetch campaigns
+          // For all types of accounts
           const accountId = node.id.startsWith("account-")
             ? node.id.replace("account-", "")
             : node.id;
@@ -375,14 +387,24 @@ export const useAccountTree = (): UseAccountTreeReturn => {
     [treeNodes, findNode, loadChildren, expandedNodes, collectChildNodeIds],
   );
 
-  // Initialize tree with MCC accounts when the component mounts
+  // Initialize tree with both MCC and individual accounts when the component mounts
   useEffect(() => {
     const initializeTree = async () => {
       if (mccResponse?.data?.accounts && treeNodes.length === 0) {
-        const accounts = mccResponse.data.accounts.map((account) =>
-          accountToTreeNode(account, null, true, new Set()),
-        );
-        setTreeNodes(accounts);
+        // Separate MCC accounts (type: false) and individual accounts (type: true, parentId: null)
+        const mccAccounts = mccResponse.data.accounts
+          .filter((account) => account.type === false) // Only MCC accounts
+          .map((account) => accountToTreeNode(account, null, true, new Set()));
+
+        const individualAccounts = mccResponse.data.accounts
+          .filter(
+            (account) => account.type === true && account.parentId === null,
+          ) // Individual accounts
+          .map((account) => accountToTreeNode(account, null, false, new Set()));
+
+        // Combine both types of accounts
+        const allAccounts = [...mccAccounts, ...individualAccounts];
+        setTreeNodes(allAccounts);
       }
     };
 

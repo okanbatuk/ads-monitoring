@@ -1,6 +1,6 @@
 import { addDays, format, isValid, parse, subDays } from "date-fns";
-import React, { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   Area,
   AreaChart,
@@ -30,7 +30,7 @@ interface ChartDataPoint {
 const MccSubAccountPage: React.FC = () => {
   // Navigation and routing
   const navigate = useNavigate();
-  const { subAccountId = "" } = useParams<{ subAccountId: string }>();
+  const { accountId = "" } = useParams<{ accountId: string }>();
 
   // Time range options
   const TIME_RANGES = [
@@ -53,26 +53,28 @@ const MccSubAccountPage: React.FC = () => {
     isLoading: isLoadingAccount,
     isError: isErrorAccount,
     error: accountError,
-  } = useAccount(subAccountId);
+  } = useAccount(accountId);
 
   const {
     data: scoresResponse,
     isLoading: isLoadingScores,
     isError: isErrorScores,
     error: scoresError,
-  } = useAccountScores(subAccountId, timeRange);
+  } = useAccountScores(accountId, timeRange);
 
   const {
     data: campaignsResponse,
     isLoading: isLoadingCampaigns,
     isError: isErrorCampaigns,
     error: campaignsError,
-  } = useAccountCampaigns(subAccountId);
+  } = useAccountCampaigns(accountId);
 
   // Process data
-  const account = useMemo(() => {
-    return accountResponse?.data;
-  }, [accountResponse]);
+  const account = accountResponse?.data;
+  const mccId = account && account?.parentId;
+
+  const { data: managerResponse } = useAccount(mccId?.toString() || "");
+  const manager = managerResponse?.data;
 
   const getStatusStyle = (status: string): { bg: string; tx: string } => {
     return status === "ENABLED"
@@ -159,13 +161,13 @@ const MccSubAccountPage: React.FC = () => {
       // Process campaign scores to ensure proper date formatting
       const processedScores = Array.isArray(campaign.scores)
         ? campaign.scores.map((score) => ({
-          ...score,
-          // Ensure date is in the correct format (dd.MM.yyyy)
-          date: format(
-            parse(score.date, "dd.MM.yyyy", new Date()),
-            "dd.MM.yyyy",
-          ),
-        }))
+            ...score,
+            // Ensure date is in the correct format (dd.MM.yyyy)
+            date: format(
+              parse(score.date, "dd.MM.yyyy", new Date()),
+              "dd.MM.yyyy",
+            ),
+          }))
         : [];
 
       // Calculate average QS and trend
@@ -173,7 +175,7 @@ const MccSubAccountPage: React.FC = () => {
       const avgQs =
         nonZeroScores.length > 0
           ? nonZeroScores.reduce((sum, score) => sum + score.qs, 0) /
-          nonZeroScores.length
+            nonZeroScores.length
           : 0;
 
       // Calculate trend percentage
@@ -187,7 +189,7 @@ const MccSubAccountPage: React.FC = () => {
 
       return {
         ...campaign,
-        accountId: campaign.accountId || subAccountId,
+        accountId: campaign.accountId || accountId,
         scores: processedScores,
         avgQs,
         trendPercentage,
@@ -195,7 +197,7 @@ const MccSubAccountPage: React.FC = () => {
     });
 
     return { campaigns: processedCampaigns, campaignCount: count };
-  }, [campaignsResponse, subAccountId]);
+  }, [campaignsResponse, accountId]);
 
   // Get worst 5 campaigns by average QS
   const worstCampaigns = [...campaigns]
@@ -211,8 +213,10 @@ const MccSubAccountPage: React.FC = () => {
   const displayedCampaigns = showBestCampaigns ? bestCampaigns : worstCampaigns;
 
   // Filter campaigns by search term for Campaigns tab
-  const filteredCampaigns = campaigns.filter(campaign =>
-    campaignsSearchTerm.length > 2 ? campaign.name.toLowerCase().includes(campaignsSearchTerm.toLowerCase()) : true
+  const filteredCampaigns = campaigns.filter((campaign) =>
+    campaignsSearchTerm.length > 2
+      ? campaign.name.toLowerCase().includes(campaignsSearchTerm.toLowerCase())
+      : true,
   );
 
   const avgQs = useMemo(() => {
@@ -232,6 +236,12 @@ const MccSubAccountPage: React.FC = () => {
     const previous = scores?.[scores.length - 2]?.qs || 0;
     return previous && current ? ((current - previous) / previous) * 100 : 0;
   }, [scores, latestScore]);
+
+  const hash = location.hash;
+
+  useEffect(() => {
+    if (hash === "#campaigns") setActiveTab("campaigns");
+  }, [hash]);
 
   // Loading and error states
   const isLoading = isLoadingAccount || isLoadingScores || isLoadingCampaigns;
@@ -271,9 +281,7 @@ const MccSubAccountPage: React.FC = () => {
   // Render error state
   if (hasError) {
     return (
-      <div
-        className={`min-h-screen p-6 ${theme === "light" && "bg-gray-50"}`}
-      >
+      <div className={`min-h-screen p-6 ${theme === "light" && "bg-gray-50"}`}>
         <div className="max-w-7xl mx-auto">
           <h2
             className={`text-2xl font-bold mb-4 ${theme === "dark" ? "text-white" : "text-gray-900"}`}
@@ -299,7 +307,61 @@ const MccSubAccountPage: React.FC = () => {
   return (
     <div className={`min-h-screen p-6 ${theme === "light" && "bg-gray-50"}`}>
       <div className="max-w-7xl mx-auto">
-        {/* Header Section */}
+        {/* Header with breadcrumb  */}
+        <nav className="flex mb-4" aria-label="Breadcrumb">
+          <ol className="inline-flex items-center space-x-1 md:space-x-2">
+            <li>
+              <Link
+                to="/"
+                className={`${theme === "dark" ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-800"} transition-colors duration-200`}
+              >
+                Home
+              </Link>
+            </li>
+            {mccId && (
+              <li className="flex items-center">
+                <span
+                  className={`mx-2 ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}
+                >
+                  {">"}
+                </span>
+                <Link
+                  to={`/manager/${mccId}`}
+                  className={`${theme === "dark" ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-800"} transition-colors duration-200`}
+                >
+                  {manager?.name}
+                </Link>
+              </li>
+            )}
+
+            <li className="flex items-center">
+              <span
+                className={`mx-2 ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}
+              >
+                {">"}
+              </span>
+              <Link
+                to={`/manager/${mccId}#accounts`}
+                className={`${theme === "dark" ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-800"} transition-colors duration-200`}
+              >
+                Accounts
+              </Link>
+            </li>
+
+            <li className="flex items-center">
+              <span
+                className={`mx-2 ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}
+              >
+                {">"}
+              </span>
+              <span
+                className={`${theme === "dark" ? "text-white" : "text-gray-700"} font-medium`}
+              >
+                {account?.name || "Account"}
+              </span>
+            </li>
+          </ol>
+        </nav>
         <div
           className={`rounded-lg shadow p-6 mb-8 ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}
         >
@@ -353,7 +415,9 @@ const MccSubAccountPage: React.FC = () => {
                 <div className="h-4 w-px bg-gray-300"></div>
                 <div>
                   <span className="font-medium">Average Score: </span>
-                  <span className={`font-semibold ${avgQs >= 7 ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') : avgQs >= 4 ? (theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600') : (theme === 'dark' ? 'text-red-400' : 'text-red-600')}`}>
+                  <span
+                    className={`font-semibold ${avgQs >= 7 ? (theme === "dark" ? "text-green-400" : "text-green-600") : avgQs >= 4 ? (theme === "dark" ? "text-yellow-400" : "text-yellow-600") : theme === "dark" ? "text-red-400" : "text-red-600"}`}
+                  >
                     {avgQs.toFixed(1)}/10
                   </span>
                 </div>
@@ -368,23 +432,27 @@ const MccSubAccountPage: React.FC = () => {
         </div>
 
         {/* Tabs */}
-        <div className={`border-b mb-6 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div
+          className={`border-b mb-6 ${theme === "dark" ? "border-gray-700" : "border-gray-200"}`}
+        >
           <nav className="-mb-px flex space-x-8">
             <button
               onClick={() => setActiveTab("overview")}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === "overview"
-                ? `${theme === 'dark' ? 'border-green-500 text-green-400' : 'border-green-500 text-green-600'}`
-                : `${theme === 'dark' ? 'border-transparent text-gray-400 hover:text-green-400 hover:border-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
-                }`}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                activeTab === "overview"
+                  ? `${theme === "dark" ? "border-green-500 text-green-400" : "border-green-500 text-green-600"}`
+                  : `${theme === "dark" ? "border-transparent text-gray-400 hover:text-green-400 hover:border-green-400" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`
+              }`}
             >
               Overview
             </button>
             <button
               onClick={() => setActiveTab("campaigns")}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === "campaigns"
-                ? `${theme === 'dark' ? 'border-green-500 text-green-400' : 'border-green-500 text-green-600'}`
-                : `${theme === 'dark' ? 'border-transparent text-gray-400 hover:text-green-400 hover:border-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
-                }`}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                activeTab === "campaigns"
+                  ? `${theme === "dark" ? "border-green-500 text-green-400" : "border-green-500 text-green-600"}`
+                  : `${theme === "dark" ? "border-transparent text-gray-400 hover:text-green-400 hover:border-green-400" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`
+              }`}
             >
               Campaigns ({campaignCount})
             </button>
@@ -399,11 +467,13 @@ const MccSubAccountPage: React.FC = () => {
                 key={range.days}
                 type="button"
                 onClick={() => setTimeRange(range.days)}
-                className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${timeRange === range.days
-                  ? `${theme === 'dark' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-blue-100 text-blue-700 border-blue-300'}`
-                  : `${theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`
-                  } ${index === 0 ? "rounded-l-md" : ""} ${index === TIME_RANGES.length - 1 ? "rounded-r-md" : ""
-                  } border`}
+                className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
+                  timeRange === range.days
+                    ? `${theme === "dark" ? "bg-blue-100 text-blue-700 border-blue-300" : "bg-blue-100 text-blue-700 border-blue-300"}`
+                    : `${theme === "dark" ? "bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600" : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300"}`
+                } ${index === 0 ? "rounded-l-md" : ""} ${
+                  index === TIME_RANGES.length - 1 ? "rounded-r-md" : ""
+                } border`}
               >
                 {range.label}
               </button>
@@ -425,8 +495,14 @@ const MccSubAccountPage: React.FC = () => {
                     Quality Score Trend
                   </h3>
                   <div className="flex items-center">
-                    <span className={`text-sm mr-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Current:</span>
-                    <span className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    <span
+                      className={`text-sm mr-2 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                    >
+                      Current:
+                    </span>
+                    <span
+                      className={`text-lg font-semibold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                    >
                       {latestScore.toFixed(1)}
                     </span>
                     {trend !== 0 && (
@@ -477,10 +553,11 @@ const MccSubAccountPage: React.FC = () => {
                             const displayQs = qsValue.toFixed(1);
                             return (
                               <div
-                                className={`space-y-1.5 p-2 rounded-lg border shadow-md ${theme === "dark"
-                                  ? "bg-gray-800 border-gray-700"
-                                  : "bg-white border-gray-200"
-                                  }`}
+                                className={`space-y-1.5 p-2 rounded-lg border shadow-md ${
+                                  theme === "dark"
+                                    ? "bg-gray-800 border-gray-700"
+                                    : "bg-white border-gray-200"
+                                }`}
                               >
                                 <div>
                                   <span className="font-semibold text-sm">
@@ -497,12 +574,13 @@ const MccSubAccountPage: React.FC = () => {
                                     Quality Score
                                   </span>
                                   <span
-                                    className={`font-medium text-sm ${qsValue >= 8
-                                      ? "text-green-600"
-                                      : qsValue >= 5
-                                        ? "text-yellow-600"
-                                        : "text-red-600"
-                                      }`}
+                                    className={`font-medium text-sm ${
+                                      qsValue >= 8
+                                        ? "text-green-600"
+                                        : qsValue >= 5
+                                          ? "text-yellow-600"
+                                          : "text-red-600"
+                                    }`}
                                   >
                                     {displayQs}
                                   </span>
@@ -531,8 +609,18 @@ const MccSubAccountPage: React.FC = () => {
                         }}
                       />
                       <defs>
-                        <linearGradient id="colorQs" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0" stopColor="#3b82f6" stopOpacity={1} />
+                        <linearGradient
+                          id="colorQs"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0"
+                            stopColor="#3b82f6"
+                            stopOpacity={1}
+                          />
                           <stop
                             offset={off}
                             stopColor="#3b82f6"
@@ -608,16 +696,28 @@ const MccSubAccountPage: React.FC = () => {
                           );
                         }}
                       />
-                      <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" />
-                      <ReferenceLine y={4} stroke="#ef4444" strokeDasharray="3 3" />
+                      <ReferenceLine
+                        y={7}
+                        stroke="#10b981"
+                        strokeDasharray="3 3"
+                      />
+                      <ReferenceLine
+                        y={4}
+                        stroke="#ef4444"
+                        strokeDasharray="3 3"
+                      />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </div>
             ) : (
-              <div className={`p-12 rounded-lg shadow mb-8 ${theme === "dark" ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"}`}>
+              <div
+                className={`p-12 rounded-lg shadow mb-8 ${theme === "dark" ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"}`}
+              >
                 <div className="text-center">
-                  <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-6 ${theme === "dark" ? "bg-gray-700" : "bg-gray-100"}`}>
+                  <div
+                    className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-6 ${theme === "dark" ? "bg-gray-700" : "bg-gray-100"}`}
+                  >
                     <svg
                       className={`w-8 h-8 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
                       fill="none"
@@ -633,15 +733,24 @@ const MccSubAccountPage: React.FC = () => {
                       />
                     </svg>
                   </div>
-                  <h3 className={`text-xl font-semibold mb-2 ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                  <h3
+                    className={`text-xl font-semibold mb-2 ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                  >
                     No campaigns found
                   </h3>
-                  <p className={`text-lg mb-4 ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}>
+                  <p
+                    className={`text-lg mb-4 ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}
+                  >
                     There are no campaigns in this account.
                   </p>
-                  <div className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+                  <div
+                    className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                  >
                     <p>Campaigns you create will appear here.</p>
-                    <p className="mt-1">Last updated: {format(new Date(), "MMM d, yyyy 'at' h:mm a")}</p>
+                    <p className="mt-1">
+                      Last updated:{" "}
+                      {format(new Date(), "MMM d, yyyy 'at' h:mm a")}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -657,13 +766,17 @@ const MccSubAccountPage: React.FC = () => {
                     <h3
                       className={`text-lg font-semibold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
                     >
-                      {showBestCampaigns ? "Best 5 Campaigns" : "Worst 5 Campaigns"} (by QS)
+                      {showBestCampaigns
+                        ? "Best 5 Campaigns"
+                        : "Worst 5 Campaigns"}{" "}
+                      (by QS)
                     </h3>
                     <button
-                      className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-200 ${theme === "dark"
-                        ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
-                        : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                        }`}
+                      className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-200 ${
+                        theme === "dark"
+                          ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
+                          : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                      }`}
                       onClick={() => setShowBestCampaigns(!showBestCampaigns)}
                       title={`Switch to ${showBestCampaigns ? "Worst" : "Best"} 5 Campaigns`}
                     >
@@ -690,7 +803,9 @@ const MccSubAccountPage: React.FC = () => {
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead
-                        className={theme === "dark" ? "bg-gray-700" : "bg-gray-50"}
+                        className={
+                          theme === "dark" ? "bg-gray-700" : "bg-gray-50"
+                        }
                       >
                         <tr>
                           <th
@@ -711,10 +826,11 @@ const MccSubAccountPage: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody
-                        className={`divide-y ${theme === "dark"
-                          ? "divide-gray-700 bg-gray-800"
-                          : "divide-gray-200 bg-white"
-                          }`}
+                        className={`divide-y ${
+                          theme === "dark"
+                            ? "divide-gray-700 bg-gray-800"
+                            : "divide-gray-200 bg-white"
+                        }`}
                       >
                         {displayedCampaigns.map((campaign, index) => {
                           const validScores = campaign.scores || [];
@@ -722,13 +838,14 @@ const MccSubAccountPage: React.FC = () => {
                           return (
                             <tr
                               key={campaign.id}
-                              className={`cursor-pointer ${theme === "dark"
-                                ? "hover:bg-gray-700"
-                                : "hover:bg-gray-50"
-                                }`}
+                              className={`cursor-pointer ${
+                                theme === "dark"
+                                  ? "hover:bg-gray-700"
+                                  : "hover:bg-gray-50"
+                              }`}
                               onClick={() =>
                                 navigate(
-                                  `/accounts/${subAccountId}/campaigns/${campaign.id}`,
+                                  `/account/${accountId}/campaign/${campaign.id}`,
                                 )
                               }
                             >
@@ -772,18 +889,19 @@ const MccSubAccountPage: React.FC = () => {
                               <td className="px-6 py-4 w-1/6">
                                 <div className="flex items-center">
                                   <span
-                                    className={`px-3 py-1 rounded-full text-sm font-semibold ${campaign.avgQs >= 7
-                                      ? theme === "dark"
-                                        ? "bg-green-900 text-green-200"
-                                        : "bg-green-100 text-green-800"
-                                      : campaign.avgQs >= 4
+                                    className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                                      campaign.avgQs >= 7
                                         ? theme === "dark"
-                                          ? "bg-yellow-900 text-yellow-200"
-                                          : "bg-yellow-100 text-yellow-800"
-                                        : theme === "dark"
-                                          ? "bg-red-900 text-red-200"
-                                          : "bg-red-100 text-red-800"
-                                      }`}
+                                          ? "bg-green-900 text-green-200"
+                                          : "bg-green-100 text-green-800"
+                                        : campaign.avgQs >= 4
+                                          ? theme === "dark"
+                                            ? "bg-yellow-900 text-yellow-200"
+                                            : "bg-yellow-100 text-yellow-800"
+                                          : theme === "dark"
+                                            ? "bg-red-900 text-red-200"
+                                            : "bg-red-100 text-red-800"
+                                    }`}
                                   >
                                     {campaign.avgQs.toFixed(1)}
                                   </span>
@@ -791,8 +909,13 @@ const MccSubAccountPage: React.FC = () => {
                                     <span
                                       className={`ml-2 text-sm ${campaign.trendPercentage >= 0 ? "text-green-600" : "text-red-600"}`}
                                     >
-                                      {campaign.trendPercentage >= 0 ? "↑" : "↓"}{" "}
-                                      {Math.abs(campaign.trendPercentage).toFixed(1)}%
+                                      {campaign.trendPercentage >= 0
+                                        ? "↑"
+                                        : "↓"}{" "}
+                                      {Math.abs(
+                                        campaign.trendPercentage,
+                                      ).toFixed(1)}
+                                      %
                                     </span>
                                   )}
                                 </div>
@@ -808,40 +931,52 @@ const MccSubAccountPage: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow overflow-hidden`}>
-
-
+          <div
+            className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} rounded-lg shadow overflow-hidden`}
+          >
             {isLoadingCampaigns ? (
               <div className="p-6">
                 <div className="animate-pulse space-y-4">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className={`h-12 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} rounded`}></div>
+                    <div
+                      key={i}
+                      className={`h-12 ${theme === "dark" ? "bg-gray-700" : "bg-gray-100"} rounded`}
+                    ></div>
                   ))}
                 </div>
               </div>
             ) : campaigns.length > 0 ? (
               <div>
                 {/* Search Input */}
-                <div className={`flex items-center justify-between ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} border-b`}>
+                <div
+                  className={`flex items-center justify-between ${theme === "dark" ? "border-gray-700" : "border-gray-200"} border-b`}
+                >
                   <div className={`p-4`}>
-                    <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    <h3
+                      className={`text-lg font-semibold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                    >
                       Campaigns
                     </h3>
-                    <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <p
+                      className={`mt-1 text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                    >
                       {campaigns.length} campaigns found
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className={`relative w-full ${!campaignsSearchTerm && "pr-4"}`}>
+                    <div
+                      className={`relative w-full ${!campaignsSearchTerm && "pr-4"}`}
+                    >
                       <input
                         type="text"
                         placeholder="Search campaigns..."
                         value={campaignsSearchTerm}
                         onChange={(e) => setCampaignsSearchTerm(e.target.value)}
-                        className={`pl-10 pr-4 py-2 text-sm border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${theme === "dark"
-                          ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
-                          : "bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500"
-                          }`}
+                        className={`pl-10 pr-4 py-2 text-sm border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          theme === "dark"
+                            ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
+                            : "bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500"
+                        }`}
                       />
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <svg
@@ -862,14 +997,25 @@ const MccSubAccountPage: React.FC = () => {
                     {campaignsSearchTerm && (
                       <button
                         onClick={() => setCampaignsSearchTerm("")}
-                        className={`mr-2 p-2 rounded-lg transition-colors duration-200 ${theme === "dark"
-                          ? "text-gray-400 hover:text-gray-300 hover:bg-gray-600"
-                          : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                          }`}
+                        className={`mr-2 p-2 rounded-lg transition-colors duration-200 ${
+                          theme === "dark"
+                            ? "text-gray-400 hover:text-gray-300 hover:bg-gray-600"
+                            : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                        }`}
                         title="Clear search"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
                         </svg>
                       </button>
                     )}
@@ -877,46 +1023,55 @@ const MccSubAccountPage: React.FC = () => {
                 </div>
                 <div className="overflow-x-auto">
                   {filteredCampaigns.length > 0 ? (
-                    <table className={`min-w-full ${theme === 'dark' ? 'divide-gray-700' : 'divide-gray-200'}`}>
-                      <thead className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                    <table
+                      className={`min-w-full ${theme === "dark" ? "divide-gray-700" : "divide-gray-200"}`}
+                    >
+                      <thead
+                        className={`${theme === "dark" ? "bg-gray-700" : "bg-gray-50"}`}
+                      >
                         <tr>
                           <th
                             scope="col"
-                            className={`px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
+                            className={`px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider ${theme === "dark" ? "text-gray-300" : "text-gray-500"}`}
                           >
                             Campaign
                           </th>
                           <th
                             scope="col"
-                            className={`px-6 py-3 w-2/3 text-center text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
+                            className={`px-6 py-3 w-2/3 text-center text-xs font-medium uppercase tracking-wider ${theme === "dark" ? "text-gray-300" : "text-gray-500"}`}
                           >
                             QS Trend
                           </th>
                           <th
                             scope="col"
-                            className={`px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
+                            className={`px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider ${theme === "dark" ? "text-gray-300" : "text-gray-500"}`}
                           >
                             Avg QS
                           </th>
                         </tr>
                       </thead>
-                      <tbody className={`${theme === 'dark' ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'}`}>
+                      <tbody
+                        className={`${theme === "dark" ? "bg-gray-800 divide-gray-700" : "bg-white divide-gray-200"}`}
+                      >
                         {filteredCampaigns.map((campaign) => {
                           const validScores = campaign.scores || [];
 
                           return (
                             <tr
                               key={campaign.id}
-                              className={`cursor-pointer transition-colors duration-200 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}
+                              className={`cursor-pointer transition-colors duration-200 ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-50"}`}
                               onClick={() =>
                                 navigate(
-                                  `/accounts/${subAccountId}/campaigns/${campaign.id}`,
+                                  `/account/${accountId}/campaign/${campaign.id}`,
                                 )
                               }
                             >
                               <td className="px-6 py-4 w-1/6">
                                 <div className="flex items-center gap-2">
-                                  <span className={`text-sm font-medium truncate inline-block max-w-[150px] ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} title={campaign.name}>
+                                  <span
+                                    className={`text-sm font-medium truncate inline-block max-w-[150px] ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                                    title={campaign.name}
+                                  >
                                     {campaign.name}
                                   </span>
                                   <div className="relative group">
@@ -926,13 +1081,15 @@ const MccSubAccountPage: React.FC = () => {
                                       title={campaign.status}
                                     ></span>
                                     <div
-                                      className={`cursor-pointer absolute z-10 hidden group-hover:block rounded px-3 py-2 -mt-8 -ml-2 ${theme === 'dark' ? 'bg-gray-900 text-gray-200' : 'bg-gray-200 text-gray-800'} ${getStatusStyle(campaign.status).tx} text-xs`}
+                                      className={`cursor-pointer absolute z-10 hidden group-hover:block rounded px-3 py-2 -mt-8 -ml-2 ${theme === "dark" ? "bg-gray-900 text-gray-200" : "bg-gray-200 text-gray-800"} ${getStatusStyle(campaign.status).tx} text-xs`}
                                     >
                                       {campaign.status}
                                     </div>
                                   </div>
                                 </div>
-                                <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                <div
+                                  className={`text-xs mt-1 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                                >
                                   ID: {campaign.id}
                                 </div>
                               </td>
@@ -949,24 +1106,29 @@ const MccSubAccountPage: React.FC = () => {
                               <td className="px-6 py-4 w-1/6 whitespace-nowrap">
                                 <div className="flex items-center">
                                   <span
-                                    className={`px-3 py-1 rounded-full text-sm font-medium ${campaign.avgQs >= 7
-                                      ? `${theme === 'dark' ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-800'}`
-                                      : campaign.avgQs >= 4
-                                        ? `${theme === 'dark' ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-800'}`
-                                        : `${theme === 'dark' ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-800'}`
-                                      }`}
+                                    className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                      campaign.avgQs >= 7
+                                        ? `${theme === "dark" ? "bg-green-900/30 text-green-400" : "bg-green-100 text-green-800"}`
+                                        : campaign.avgQs >= 4
+                                          ? `${theme === "dark" ? "bg-yellow-900/30 text-yellow-400" : "bg-yellow-100 text-yellow-800"}`
+                                          : `${theme === "dark" ? "bg-red-900/30 text-red-400" : "bg-red-100 text-red-800"}`
+                                    }`}
                                   >
                                     {campaign.avgQs.toFixed(1)}/10
                                   </span>
                                   {campaign.trendPercentage !== 0 && (
                                     <span
-                                      className={`ml-3 inline-flex items-center text-sm font-medium ${campaign.trendPercentage > 0
-                                        ? "text-green-600"
-                                        : "text-red-600"
-                                        }`}
+                                      className={`ml-3 inline-flex items-center text-sm font-medium ${
+                                        campaign.trendPercentage > 0
+                                          ? "text-green-600"
+                                          : "text-red-600"
+                                      }`}
                                     >
                                       {campaign.trendPercentage > 0 ? "↑" : "↓"}{" "}
-                                      {Math.abs(campaign.trendPercentage).toFixed(1)}%
+                                      {Math.abs(
+                                        campaign.trendPercentage,
+                                      ).toFixed(1)}
+                                      %
                                     </span>
                                   )}
                                 </div>
@@ -977,14 +1139,18 @@ const MccSubAccountPage: React.FC = () => {
                       </tbody>
                     </table>
                   ) : (
-                    <div className={`p-6 text-center italic ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <div
+                      className={`p-6 text-center italic ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                    >
                       No campaigns found matching {campaignsSearchTerm}
                     </div>
                   )}
                 </div>
               </div>
             ) : (
-              <div className={`p-6 text-center italic ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+              <div
+                className={`p-6 text-center italic ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+              >
                 No campaigns found for this account.
               </div>
             )}

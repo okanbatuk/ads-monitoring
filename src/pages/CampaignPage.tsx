@@ -20,6 +20,7 @@ import {
   useCampaign,
   useCampaignAdGroups,
   useCampaignScores,
+  useAccount,
 } from "../services";
 import { useTheme } from "@/contexts/ThemeProvider";
 
@@ -37,7 +38,7 @@ const SkeletonLoader = ({
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className={`animate-pulse ${theme === 'light' && 'bg-gray-200'} rounded ${className}`}
+          className={`animate-pulse ${theme === "light" && "bg-gray-200"} rounded ${className}`}
         />
       ))}
     </>
@@ -56,22 +57,22 @@ const StatusBadge = ({ status }: { status: string }) => {
   const { theme } = useTheme();
   const statusMap: Record<string, { bg: string; text: string }> = {
     ENABLED: {
-      bg: theme === 'dark' ? 'bg-green-900/30' : 'bg-green-100',
-      text: theme === 'dark' ? 'text-green-400' : 'text-green-800'
+      bg: theme === "dark" ? "bg-green-900/30" : "bg-green-100",
+      text: theme === "dark" ? "text-green-400" : "text-green-800",
     },
     PAUSED: {
-      bg: theme === 'dark' ? 'bg-yellow-900/30' : 'bg-yellow-100',
-      text: theme === 'dark' ? 'text-yellow-400' : 'text-yellow-800'
+      bg: theme === "dark" ? "bg-yellow-900/30" : "bg-yellow-100",
+      text: theme === "dark" ? "text-yellow-400" : "text-yellow-800",
     },
     REMOVED: {
-      bg: theme === 'dark' ? 'bg-red-900/30' : 'bg-red-100',
-      text: theme === 'dark' ? 'text-red-400' : 'text-red-800'
+      bg: theme === "dark" ? "bg-red-900/30" : "bg-red-100",
+      text: theme === "dark" ? "text-red-400" : "text-red-800",
     },
   };
 
   const statusStyle = statusMap[status] || {
-    bg: theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100',
-    text: theme === 'dark' ? 'text-gray-300' : 'text-gray-800',
+    bg: theme === "dark" ? "bg-gray-700" : "bg-gray-100",
+    text: theme === "dark" ? "text-gray-300" : "text-gray-800",
   };
 
   return (
@@ -131,13 +132,20 @@ const CampaignPage = () => {
     (activeTab === "adgroups" ? adGroupsError : null);
 
   const campaign = campaignResponse?.data;
+  const account = campaign?.account;
+  const mccId = account?.parentId;
   const scoresData = scoresResponse?.data?.scores || [];
   const adGroupsData = adGroupsResponse?.data?.adGroups || [];
   const adGroupCount = adGroupsResponse?.data?.total || 0;
 
+  const { data: accountData } = useAccount(mccId?.toString() || "");
+  const manager = accountData?.data?.name || "Manager";
+
   // Filter ad groups by search term for Ad Groups tab
-  const filteredAdGroups = adGroupsData.filter(adGroup =>
-    adGroupsSearchTerm.length > 2 ? adGroup.name.toLowerCase().includes(adGroupsSearchTerm.toLowerCase()) : true
+  const filteredAdGroups = adGroupsData.filter((adGroup) =>
+    adGroupsSearchTerm.length > 2
+      ? adGroup.name.toLowerCase().includes(adGroupsSearchTerm.toLowerCase())
+      : true,
   );
 
   // Get bottom 5 ad groups by quality score with time range based sparkline data
@@ -352,8 +360,6 @@ const CampaignPage = () => {
       });
     });
 
-
-
     // Generate data points for the selected time range
     const today = new Date();
     const dateArray = Array.from({ length: timeRange }, (_, i) => {
@@ -381,8 +387,7 @@ const CampaignPage = () => {
   const hash = location.hash;
 
   useEffect(() => {
-    if (hash === '#adgroups')
-      setActiveTab('adgroups');
+    if (hash === "#adgroups") setActiveTab("adgroups");
   }, [hash]);
 
   // Show loading state
@@ -443,7 +448,7 @@ const CampaignPage = () => {
 
   // Calculate average QS from non-zero values only
   const avgQs = (() => {
-    const nonZeroData = chartData.filter(data => data.qs > 0);
+    const nonZeroData = chartData.filter((data) => data.qs > 0);
     return nonZeroData.length > 0
       ? nonZeroData.reduce((sum, data) => sum + data.qs, 0) / nonZeroData.length
       : 0;
@@ -452,24 +457,68 @@ const CampaignPage = () => {
   return (
     <div className={`min-h-screen p-6 ${theme === "light" && "bg-gray-50"}`}>
       <div className="max-w-7xl mx-auto">
+        {/* Header with breadcrumb */}
         <nav className="flex mb-4" aria-label="Breadcrumb">
           <ol className="inline-flex items-center space-x-1 md:space-x-2">
             <li>
-              <Link to="/" className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
+              <Link
+                to="/"
+                className={`${theme === "dark" ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-800"} transition-colors duration-200`}
+              >
                 Home
               </Link>
             </li>
+            {mccId && (
+              <li className="flex items-center">
+                <span
+                  className={`mx-2 ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}
+                >
+                  {">"}
+                </span>
+                <Link
+                  to={`/manager/${mccId}`}
+                  className={`${theme === "dark" ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-800"} transition-colors duration-200`}
+                >
+                  {manager}
+                </Link>
+              </li>
+            )}
             <li className="flex items-center">
-              <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
-              <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>MCC Account</span>
+              <span
+                className={`mx-2 ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}
+              >
+                {">"}
+              </span>
+              <Link
+                to={`/account/${account?.id}`}
+                className={`${theme === "dark" ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-800"} transition-colors duration-200`}
+              >
+                {account?.name}
+              </Link>
             </li>
             <li className="flex items-center">
-              <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
-              <span className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>Sub Account</span>
+              <span
+                className={`mx-2 ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}
+              >
+                {">"}
+              </span>
+              <Link
+                to={`/account/${account?.id}#campaigns`}
+                className={`${theme === "dark" ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-800"} transition-colors duration-200`}
+              >
+                Campaigns
+              </Link>
             </li>
+
             <li className="flex items-center">
-              <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
-              <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-700'} font-medium`}>
+              <span
+                className={`mx-2 ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}
+              >
+                {">"}
+              </span>
+              <span
+                className={`${theme === "dark" ? "text-white" : "text-gray-700"} font-medium`}
+              >
                 {campaign?.name || "Campaign"}
               </span>
             </li>
@@ -479,8 +528,6 @@ const CampaignPage = () => {
         <div
           className={`rounded-lg shadow p-6 mb-8 ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}
         >
-
-
           <div>
             <div className="flex items-center gap-3">
               <h1
@@ -513,12 +560,13 @@ const CampaignPage = () => {
               <div className="flex items-center">
                 <span className="font-medium">Quality Score: </span>
                 <span
-                  className={`ml-1 font-semibold ${currentScore >= 7
-                    ? "text-green-600"
-                    : currentScore >= 4
-                      ? "text-yellow-600"
-                      : "text-red-600"
-                    }`}
+                  className={`ml-1 font-semibold ${
+                    currentScore >= 7
+                      ? "text-green-600"
+                      : currentScore >= 4
+                        ? "text-yellow-600"
+                        : "text-red-600"
+                  }`}
                 >
                   {currentScore.toFixed(1)}/10
                 </span>
@@ -533,7 +581,9 @@ const CampaignPage = () => {
               <div className="h-4 w-px bg-gray-300"></div>
               <div>
                 <span className="font-medium">Average Score: </span>
-                <span className={`font-semibold ${avgQs >= 7 ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') : avgQs >= 4 ? (theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600') : (theme === 'dark' ? 'text-red-400' : 'text-red-600')}`}>
+                <span
+                  className={`font-semibold ${avgQs >= 7 ? (theme === "dark" ? "text-green-400" : "text-green-600") : avgQs >= 4 ? (theme === "dark" ? "text-yellow-400" : "text-yellow-600") : theme === "dark" ? "text-red-400" : "text-red-600"}`}
+                >
                   {avgQs.toFixed(1)}/10
                 </span>
               </div>
@@ -547,14 +597,17 @@ const CampaignPage = () => {
         </div>
 
         {/* Tabs */}
-        <div className={`border-b mb-6 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div
+          className={`border-b mb-6 ${theme === "dark" ? "border-gray-700" : "border-gray-200"}`}
+        >
           <nav className="-mb-px flex space-x-8">
             <button
               onClick={() => setActiveTab("overview")}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === "overview"
-                ? `${theme === 'dark' ? 'border-green-500 text-green-400' : 'border-green-500 text-green-600'}`
-                : `${theme === 'dark' ? 'border-transparent text-gray-400 hover:text-green-400 hover:border-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
-                }`}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                activeTab === "overview"
+                  ? `${theme === "dark" ? "border-green-500 text-green-400" : "border-green-500 text-green-600"}`
+                  : `${theme === "dark" ? "border-transparent text-gray-400 hover:text-green-400 hover:border-green-400" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`
+              }`}
             >
               Overview
             </button>
@@ -563,10 +616,11 @@ const CampaignPage = () => {
                 setActiveTab("adgroups");
                 refetchAdGroups();
               }}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === "adgroups"
-                ? `${theme === 'dark' ? 'border-green-500 text-green-400' : 'border-green-500 text-green-600'}`
-                : `${theme === 'dark' ? 'border-transparent text-gray-400 hover:text-green-400 hover:border-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
-                }`}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                activeTab === "adgroups"
+                  ? `${theme === "dark" ? "border-green-500 text-green-400" : "border-green-500 text-green-600"}`
+                  : `${theme === "dark" ? "border-transparent text-gray-400 hover:text-green-400 hover:border-green-400" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`
+              }`}
             >
               Ad Groups ({adGroupCount})
             </button>
@@ -581,11 +635,13 @@ const CampaignPage = () => {
                 key={range.days}
                 type="button"
                 onClick={() => setTimeRange(range.days)}
-                className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${timeRange === range.days
-                  ? `${theme === 'dark' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-blue-100 text-blue-700 border-blue-300'}`
-                  : `${theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`
-                  } ${index === 0 ? "rounded-l-md" : ""} ${index === TIME_RANGES.length - 1 ? "rounded-r-md" : ""
-                  } border`}
+                className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
+                  timeRange === range.days
+                    ? `${theme === "dark" ? "bg-blue-100 text-blue-700 border-blue-300" : "bg-blue-100 text-blue-700 border-blue-300"}`
+                    : `${theme === "dark" ? "bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600" : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300"}`
+                } ${index === 0 ? "rounded-l-md" : ""} ${
+                  index === TIME_RANGES.length - 1 ? "rounded-r-md" : ""
+                } border`}
               >
                 {range.label}
               </button>
@@ -596,12 +652,24 @@ const CampaignPage = () => {
         {activeTab === "overview" ? (
           <div className="space-y-6">
             {/* Quality Score Trend Chart */}
-            <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow p-6`}>
+            <div
+              className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} rounded-lg shadow p-6`}
+            >
               <div className="flex justify-between items-center mb-4">
-                <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Quality Score Trend</h2>
+                <h2
+                  className={`text-lg font-semibold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                >
+                  Quality Score Trend
+                </h2>
                 <div className="flex items-center">
-                  <span className={`text-sm mr-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Current:</span>
-                  <span className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  <span
+                    className={`text-sm mr-2 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                  >
+                    Current:
+                  </span>
+                  <span
+                    className={`text-lg font-semibold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                  >
                     {currentScore.toFixed(1)}
                   </span>
                   {trend !== 0 && (
@@ -648,9 +716,13 @@ const CampaignPage = () => {
                             const qsValue = Number(payload[0].value);
                             const displayQs = qsValue.toFixed(1);
                             return (
-                              <div className={`space-y-1.5 p-2 rounded-lg shadow-md ${theme === 'dark' ? 'bg-gray-800 border border-gray-600' : 'bg-white border border-gray-200'}`}>
+                              <div
+                                className={`space-y-1.5 p-2 rounded-lg shadow-md ${theme === "dark" ? "bg-gray-800 border border-gray-600" : "bg-white border border-gray-200"}`}
+                              >
                                 <div>
-                                  <span className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                  <span
+                                    className={`font-semibold text-sm ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                                  >
                                     {format(
                                       new Date(payload[0].payload.date),
                                       "MMM d, yyyy",
@@ -658,25 +730,32 @@ const CampaignPage = () => {
                                   </span>
                                 </div>
                                 <div className="flex items-center justify-between space-x-4">
-                                  <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  <span
+                                    className={`text-xs ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                                  >
                                     Quality Score
                                   </span>
                                   <span
-                                    className={`font-medium text-sm ${qsValue >= 8
-                                      ? "text-green-600"
-                                      : qsValue >= 5
-                                        ? "text-yellow-600"
-                                        : "text-red-600"
-                                      }`}
+                                    className={`font-medium text-sm ${
+                                      qsValue >= 8
+                                        ? "text-green-600"
+                                        : qsValue >= 5
+                                          ? "text-yellow-600"
+                                          : "text-red-600"
+                                    }`}
                                   >
                                     {displayQs}
                                   </span>
                                 </div>
                                 <div className="flex items-center justify-between space-x-4">
-                                  <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                  <span
+                                    className={`text-xs ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}
+                                  >
                                     Ad Groups:
                                   </span>
-                                  <span className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                  <span
+                                    className={`font-medium text-sm ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                                  >
                                     {payload[0].payload.adGroupCount}
                                   </span>
                                 </div>
@@ -787,7 +866,9 @@ const CampaignPage = () => {
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className={`h-full flex items-center justify-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <div
+                    className={`h-full flex items-center justify-center ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                  >
                     No data available for the selected period
                   </div>
                 )}
@@ -795,19 +876,25 @@ const CampaignPage = () => {
             </div>
 
             {/* Best/Worst Ad Groups Section */}
-            <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow p-6`}>
+            <div
+              className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} rounded-lg shadow p-6`}
+            >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
                   <h3
-                    className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
+                    className={`text-lg font-semibold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
                   >
-                    {showBestAdGroups ? "Best 5 Ad Groups" : "Worst 5 Ad Groups"} (by QS)
+                    {showBestAdGroups
+                      ? "Best 5 Ad Groups"
+                      : "Worst 5 Ad Groups"}{" "}
+                    (by QS)
                   </h3>
                   <button
-                    className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-200 ${theme === "dark"
-                      ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
-                      : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                      }`}
+                    className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-200 ${
+                      theme === "dark"
+                        ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
+                        : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                    }`}
                     onClick={() => setShowBestAdGroups(!showBestAdGroups)}
                     title={`Switch to ${showBestAdGroups ? "Worst" : "Best"} 5 Ad Groups`}
                   >
@@ -829,60 +916,71 @@ const CampaignPage = () => {
               </div>
               {displayedAdGroups.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className={`min-w-full ${theme === 'dark' ? 'divide-gray-700' : 'divide-gray-200'}`}>
-                    <thead className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                  <table
+                    className={`min-w-full ${theme === "dark" ? "divide-gray-700" : "divide-gray-200"}`}
+                  >
+                    <thead
+                      className={`${theme === "dark" ? "bg-gray-700" : "bg-gray-50"}`}
+                    >
                       <tr>
                         <th
                           scope="col"
-                          className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
+                          className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 ${theme === "dark" ? "text-gray-300" : "text-gray-500"}`}
                         >
                           Ad Groups
                         </th>
                         <th
                           scope="col"
-                          className={`px-6 py-3 text-center text-xs font-medium uppercase tracking-wider w-1/2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
+                          className={`px-6 py-3 text-center text-xs font-medium uppercase tracking-wider w-1/2 ${theme === "dark" ? "text-gray-300" : "text-gray-500"}`}
                         >
                           QS Trends
                         </th>
                         <th
                           scope="col"
-                          className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
+                          className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 ${theme === "dark" ? "text-gray-300" : "text-gray-500"}`}
                         >
                           AVG QS
                         </th>
                       </tr>
                     </thead>
-                    <tbody className={`${theme === 'dark' ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'}`}>
+                    <tbody
+                      className={`${theme === "dark" ? "bg-gray-800 divide-gray-700" : "bg-white divide-gray-200"}`}
+                    >
                       {displayedAdGroups.map((adGroup, index) => {
                         const latestScore = adGroup.score;
                         const scores = adGroup.scores || [];
 
                         // Calculate trend from sparkline data (current vs previous non-zero value)
-                        const nonZeroScores = scores.filter(
-                          (d) => d.qs > 0,
-                        );
+                        const nonZeroScores = scores.filter((d) => d.qs > 0);
                         let trendPercentage = 0;
 
                         if (nonZeroScores.length >= 2) {
-                          const current = nonZeroScores[nonZeroScores.length - 1].qs;
-                          const previous = nonZeroScores[nonZeroScores.length - 2].qs;
+                          const current =
+                            nonZeroScores[nonZeroScores.length - 1].qs;
+                          const previous =
+                            nonZeroScores[nonZeroScores.length - 2].qs;
                           trendPercentage =
-                            previous !== 0 ? ((current - previous) / previous) * 100 : 0;
+                            previous !== 0
+                              ? ((current - previous) / previous) * 100
+                              : 0;
                         }
 
                         return (
                           <tr
                             key={adGroup.id}
-                            className={`cursor-pointer transition-colors duration-200 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}
+                            className={`cursor-pointer transition-colors duration-200 ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-50"}`}
                             onClick={() =>
                               navigate(
-                                `/campaigns/${campaignId}/adgroups/${adGroup.id}`,
+                                `/campaign/${campaignId}/adgroup/${adGroup.id}`,
                               )
                             }
                           >
                             <td className="px-6 py-4 w-1/6">
                               <div className="flex items-center gap-2">
-                                <span className={`text-sm font-medium truncate inline-block max-w-[150px] ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} title={adGroup.name}>
+                                <span
+                                  className={`text-sm font-medium truncate inline-block max-w-[150px] ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                                  title={adGroup.name}
+                                >
                                   {adGroup.name}
                                 </span>
                                 <div className="relative group">
@@ -892,13 +990,15 @@ const CampaignPage = () => {
                                     title={adGroup.status}
                                   ></span>
                                   <div
-                                    className={`cursor-pointer absolute z-10 hidden group-hover:block rounded px-3 py-2 -mt-8 -ml-2 ${theme === 'dark' ? 'bg-gray-900 text-gray-200' : 'bg-gray-200 text-gray-800'} ${getStatusStyle(adGroup.status).tx} text-xs`}
+                                    className={`cursor-pointer absolute z-10 hidden group-hover:block rounded px-3 py-2 -mt-8 -ml-2 ${theme === "dark" ? "bg-gray-900 text-gray-200" : "bg-gray-200 text-gray-800"} ${getStatusStyle(adGroup.status).tx} text-xs`}
                                   >
                                     {adGroup.status}
                                   </div>
                                 </div>
                               </div>
-                              <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                              <div
+                                className={`text-xs mt-1 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                              >
                                 ID: {adGroup.id}
                               </div>
                             </td>
@@ -912,7 +1012,9 @@ const CampaignPage = () => {
                                     timeRange={timeRange}
                                   />
                                 ) : (
-                                  <div className={`text-xs h-full flex items-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`}>
+                                  <div
+                                    className={`text-xs h-full flex  justify-center ${theme === "dark" ? "text-gray-400" : "text-gray-400"}`}
+                                  >
                                     No data
                                   </div>
                                 )}
@@ -921,12 +1023,13 @@ const CampaignPage = () => {
                             <td className="px-6 py-4 w-1/6">
                               <div className="flex items-center">
                                 <span
-                                  className={`px-3 py-1 rounded-full text-sm font-medium ${latestScore >= 7
-                                    ? `${theme === 'dark' ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-800'}`
-                                    : latestScore >= 4
-                                      ? `${theme === 'dark' ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-800'}`
-                                      : `${theme === 'dark' ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-800'}`
-                                    }`}
+                                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                    latestScore >= 7
+                                      ? `${theme === "dark" ? "bg-green-900/30 text-green-400" : "bg-green-100 text-green-800"}`
+                                      : latestScore >= 4
+                                        ? `${theme === "dark" ? "bg-yellow-900/30 text-yellow-400" : "bg-yellow-100 text-yellow-800"}`
+                                        : `${theme === "dark" ? "bg-red-900/30 text-red-400" : "bg-red-100 text-red-800"}`
+                                  }`}
                                 >
                                   {latestScore.toFixed(1)}
                                 </span>
@@ -948,43 +1051,61 @@ const CampaignPage = () => {
                   </table>
                 </div>
               ) : (
-                <div className={`px-6 py-4 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                <div
+                  className={`px-6 py-4 text-center ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                >
                   No {showBestAdGroups ? "best" : "worst"} ad groups found
                 </div>
               )}
             </div>
           </div>
         ) : (
-          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow overflow-hidden`}>
+          <div
+            className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} rounded-lg shadow overflow-hidden`}
+          >
             {isLoadingAdGroups ? (
               <div className="p-6">
                 <div className="animate-pulse space-y-4">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className={`h-12 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} rounded`}></div>
+                    <div
+                      key={i}
+                      className={`h-12 ${theme === "dark" ? "bg-gray-700" : "bg-gray-100"} rounded`}
+                    ></div>
                   ))}
                 </div>
               </div>
             ) : adGroupsData.length > 0 ? (
               <div>
                 {/* Search Input */}
-                <div className={`flex items-center justify-between ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} border-b`}>
+                <div
+                  className={`flex items-center justify-between ${theme === "dark" ? "border-gray-700" : "border-gray-200"} border-b`}
+                >
                   <div className={`p-4`}>
-                    <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Ad Groups</h2>
-                    <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <h2
+                      className={`text-lg font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                    >
+                      Ad Groups
+                    </h2>
+                    <p
+                      className={`mt-1 text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                    >
                       {adGroupCount} ad groups found
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className={`relative w-full ${!adGroupsSearchTerm && "pr-4"}`}>
+                    <div
+                      className={`relative w-full ${!adGroupsSearchTerm && "pr-4"}`}
+                    >
                       <input
                         type="text"
                         placeholder="Search ad groups..."
                         value={adGroupsSearchTerm}
                         onChange={(e) => setAdGroupsSearchTerm(e.target.value)}
-                        className={`pl-10 pr-4 py-2 text-sm border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${theme === "dark"
-                          ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
-                          : "bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500"
-                          }`}
+                        className={`pl-10 pr-4 py-2 text-sm border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          theme === "dark"
+                            ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
+                            : "bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500"
+                        }`}
                       />
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <svg
@@ -1005,14 +1126,25 @@ const CampaignPage = () => {
                     {adGroupsSearchTerm && (
                       <button
                         onClick={() => setAdGroupsSearchTerm("")}
-                        className={`mr-2 p-2 rounded-lg transition-colors duration-200 ${theme === "dark"
-                          ? "text-gray-400 hover:text-gray-300 hover:bg-gray-600"
-                          : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                          }`}
+                        className={`mr-2 p-2 rounded-lg transition-colors duration-200 ${
+                          theme === "dark"
+                            ? "text-gray-400 hover:text-gray-300 hover:bg-gray-600"
+                            : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                        }`}
                         title="Clear search"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
                         </svg>
                       </button>
                     )}
@@ -1021,34 +1153,40 @@ const CampaignPage = () => {
 
                 <div className="overflow-x-auto">
                   {filteredAdGroups.length > 0 ? (
-                    <table className={`min-w-full ${theme === 'dark' ? 'divide-gray-700' : 'divide-gray-200'}`}>
-                      <thead className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                    <table
+                      className={`min-w-full ${theme === "dark" ? "divide-gray-700" : "divide-gray-200"}`}
+                    >
+                      <thead
+                        className={`${theme === "dark" ? "bg-gray-700" : "bg-gray-50"}`}
+                      >
                         <tr>
                           <th
                             scope="col"
-                            className={`px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
+                            className={`px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider ${theme === "dark" ? "text-gray-300" : "text-gray-500"}`}
                           >
                             Ad Group
                           </th>
                           <th
                             scope="col"
-                            className={`px-6 py-3 w-2/3 text-center text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
+                            className={`px-6 py-3 w-2/3 text-center text-xs font-medium uppercase tracking-wider ${theme === "dark" ? "text-gray-300" : "text-gray-500"}`}
                           >
                             QS Trend
                           </th>
                           <th
                             scope="col"
-                            className={`px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
+                            className={`px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider ${theme === "dark" ? "text-gray-300" : "text-gray-500"}`}
                           >
                             Avg QS
                           </th>
                         </tr>
                       </thead>
-                      <tbody className={`${theme === 'dark' ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'}`}>
+                      <tbody
+                        className={`${theme === "dark" ? "bg-gray-800 divide-gray-700" : "bg-white divide-gray-200"}`}
+                      >
                         {filteredAdGroups.map((adGroup) => {
-
                           const scores = adGroup.scores || [];
-                          const latestScore = scores.length > 0 ? scores[0].qs : 0;
+                          const latestScore =
+                            scores.length > 0 ? scores[0].qs : 0;
                           const previousScore =
                             scores.length > 1 ? scores[1].qs : latestScore;
                           const trend = latestScore - previousScore;
@@ -1059,16 +1197,19 @@ const CampaignPage = () => {
                           return (
                             <tr
                               key={adGroup.id}
-                              className={`cursor-pointer transition-colors duration-200 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}
+                              className={`cursor-pointer transition-colors duration-200 ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-50"}`}
                               onClick={() =>
                                 navigate(
-                                  `/campaigns/${campaignId}/adgroups/${adGroup.id}`,
+                                  `/campaign/${campaignId}/adgroup/${adGroup.id}`,
                                 )
                               }
                             >
                               <td className="px-6 py-4 w-1/6">
                                 <div className="flex items-center gap-2">
-                                  <span className={`text-sm font-medium truncate inline-block max-w-[150px] ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} title={adGroup.name}>
+                                  <span
+                                    className={`text-sm font-medium truncate inline-block max-w-[150px] ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                                    title={adGroup.name}
+                                  >
                                     {adGroup.name}
                                   </span>
                                   <div className="relative group">
@@ -1078,13 +1219,15 @@ const CampaignPage = () => {
                                       title={adGroup.status}
                                     ></span>
                                     <div
-                                      className={`cursor-pointer absolute z-10 hidden group-hover:block rounded px-3 py-2 -mt-8 -ml-2 ${theme === 'dark' ? 'bg-gray-900 text-gray-200' : 'bg-gray-200 text-gray-800'} ${getStatusStyle(adGroup.status).tx} text-xs`}
+                                      className={`cursor-pointer absolute z-10 hidden group-hover:block rounded px-3 py-2 -mt-8 -ml-2 ${theme === "dark" ? "bg-gray-900 text-gray-200" : "bg-gray-200 text-gray-800"} ${getStatusStyle(adGroup.status).tx} text-xs`}
                                     >
                                       {adGroup.status}
                                     </div>
                                   </div>
                                 </div>
-                                <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                <div
+                                  className={`text-xs mt-1 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                                >
                                   ID: {adGroup.id}
                                 </div>
                               </td>
@@ -1101,22 +1244,24 @@ const CampaignPage = () => {
                               <td className="px-6 py-4 w-1/6 whitespace-nowrap">
                                 <div className="flex items-center">
                                   <span
-                                    className={`px-3 py-1 rounded-full text-sm font-medium ${latestScore >= 7
-                                      ? `${theme === 'dark' ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-800'}`
-                                      : latestScore >= 4
-                                        ? `${theme === 'dark' ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-800'}`
-                                        : `${theme === 'dark' ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-800'}`
-                                      }`}
+                                    className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                      latestScore >= 7
+                                        ? `${theme === "dark" ? "bg-green-900/30 text-green-400" : "bg-green-100 text-green-800"}`
+                                        : latestScore >= 4
+                                          ? `${theme === "dark" ? "bg-yellow-900/30 text-yellow-400" : "bg-yellow-100 text-yellow-800"}`
+                                          : `${theme === "dark" ? "bg-red-900/30 text-red-400" : "bg-red-100 text-red-800"}`
+                                    }`}
                                   >
                                     {latestScore.toFixed(1)}/10
                                   </span>
                                   {!isNaN(trendPercentage) &&
                                     trendPercentage !== 0 && (
                                       <span
-                                        className={`ml-3 inline-flex items-center text-sm font-medium ${trend > 0
-                                          ? "text-green-600"
-                                          : "text-red-600"
-                                          }`}
+                                        className={`ml-3 inline-flex items-center text-sm font-medium ${
+                                          trend > 0
+                                            ? "text-green-600"
+                                            : "text-red-600"
+                                        }`}
                                       >
                                         {trend > 0 ? (
                                           <FiArrowUpRight className="mr-1" />
@@ -1134,14 +1279,20 @@ const CampaignPage = () => {
                       </tbody>
                     </table>
                   ) : (
-                    <div className={`p-6 text-center italic ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {adGroupsSearchTerm.length >= 2 ? `No ad groups found matching "${adGroupsSearchTerm}"` : "No ad groups found"}
+                    <div
+                      className={`p-6 text-center italic ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                    >
+                      {adGroupsSearchTerm.length >= 2
+                        ? `No ad groups found matching "${adGroupsSearchTerm}"`
+                        : "No ad groups found"}
                     </div>
                   )}
                 </div>
               </div>
             ) : (
-              <div className={`p-6 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+              <div
+                className={`p-6 text-center ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+              >
                 No ad groups found
               </div>
             )}

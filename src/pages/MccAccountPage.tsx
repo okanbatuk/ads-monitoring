@@ -1,5 +1,5 @@
 import { addDays, format, parse, subDays } from "date-fns";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Link } from "react-router-dom";
 import {
@@ -145,7 +145,7 @@ export const MccAccountPage = () => {
       const avgQs =
         sortedScores.length > 0
           ? sortedScores.reduce((sum, score) => sum + (score?.qs || 0), 0) /
-          sortedScores.length
+            sortedScores.length
           : 0;
 
       // Calculate QS change if we have at least 2 scores
@@ -164,6 +164,12 @@ export const MccAccountPage = () => {
     });
   }, [subAccounts, timeRange]);
 
+  const hash = location.hash;
+
+  useEffect(() => {
+    if (hash === "#accounts") setActiveTab("accounts");
+  }, [hash]);
+
   // Calculate trend
   const trend = useMemo(() => {
     const current = scores?.[scores.length - 1]?.qs || 0;
@@ -173,17 +179,16 @@ export const MccAccountPage = () => {
 
   // Calculate average QS from non-zero values only
   const avgQs = (() => {
-    const nonZeroScores = scores.filter(score => score.qs > 0);
+    const nonZeroScores = scores.filter((score) => score.qs > 0);
     return nonZeroScores.length > 0
-      ? nonZeroScores.reduce((sum, score) => sum + score.qs, 0) / nonZeroScores.length
+      ? nonZeroScores.reduce((sum, score) => sum + score.qs, 0) /
+          nonZeroScores.length
       : 0;
   })();
 
   if (isLoadingAccount || isLoadingScores || isLoadingSubAccounts) {
     return (
-      <div
-        className={`min-h-screen p-6 ${theme === "light" && "bg-gray-50"}`}
-      >
+      <div className={`min-h-screen p-6 ${theme === "light" && "bg-gray-50"}`}>
         <div className="max-w-7xl mx-auto">
           <div className="animate-pulse">
             <div
@@ -232,16 +237,12 @@ export const MccAccountPage = () => {
     );
   }
 
-  // Calculate average QS
-
-  // Process sub-accounts with scores and calculate average QS
-
-  // Get bottom 5 sub-accounts by average QS
+  // Worst 5 sub-accounts
   const worstAccounts = [...processedSubAccounts]
     .sort((a, b) => a.avgQs - b.avgQs)
     .slice(0, 5);
 
-  // Get top 5 sub-accounts by average QS
+  // Top 5 sub-accounts
   const bestAccounts = [...processedSubAccounts]
     .sort((a, b) => b.avgQs - a.avgQs)
     .slice(0, 5);
@@ -250,8 +251,10 @@ export const MccAccountPage = () => {
   const displayedAccounts = showBestAccounts ? bestAccounts : worstAccounts;
 
   // Filter accounts by search term for Accounts tab
-  const filteredSubAccounts = processedSubAccounts.filter(subAccount =>
-    accountsSearchTerm.length >= 2 ? subAccount.name.toLowerCase().includes(accountsSearchTerm.toLowerCase()) : true
+  const filteredSubAccounts = processedSubAccounts.filter((subAccount) =>
+    accountsSearchTerm.length >= 2
+      ? subAccount.name.toLowerCase().includes(accountsSearchTerm.toLowerCase())
+      : true,
   );
 
   // Get the latest score or default to 0
@@ -262,8 +265,6 @@ export const MccAccountPage = () => {
       : latestScore >= 4
         ? "text-yellow-600"
         : "text-red-600";
-
-
 
   const getStatusStyle = (status: string): { bg: string; tx: string } => {
     return status === "ENABLED"
@@ -294,13 +295,22 @@ export const MccAccountPage = () => {
           <nav className="flex mb-4" aria-label="Breadcrumb">
             <ol className="inline-flex items-center space-x-1 md:space-x-2">
               <li>
-                <Link to="/" className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} transition-colors duration-200`}>
+                <Link
+                  to="/"
+                  className={`${theme === "dark" ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-800"} transition-colors duration-200`}
+                >
                   Home
                 </Link>
               </li>
               <li className="flex items-center">
-                <span className={`mx-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
-                <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-700'} font-medium`}>
+                <span
+                  className={`mx-2 ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}
+                >
+                  /
+                </span>
+                <span
+                  className={`${theme === "dark" ? "text-white" : "text-gray-700"} font-medium`}
+                >
                   {account.name}
                 </span>
               </li>
@@ -353,7 +363,9 @@ export const MccAccountPage = () => {
                 <div className="h-4 w-px bg-gray-300"></div>
                 <div>
                   <span className="font-medium">Average Score: </span>
-                  <span className={`font-semibold ${avgQs >= 7 ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') : avgQs >= 4 ? (theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600') : (theme === 'dark' ? 'text-red-400' : 'text-red-600')}`}>
+                  <span
+                    className={`font-semibold ${avgQs >= 7 ? (theme === "dark" ? "text-green-400" : "text-green-600") : avgQs >= 4 ? (theme === "dark" ? "text-yellow-400" : "text-yellow-600") : theme === "dark" ? "text-red-400" : "text-red-600"}`}
+                  >
                     {avgQs.toFixed(1)}/10
                   </span>
                 </div>
@@ -368,23 +380,27 @@ export const MccAccountPage = () => {
         </div>
 
         {/* Tabs */}
-        <div className={`border-b mb-6 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div
+          className={`border-b mb-6 ${theme === "dark" ? "border-gray-700" : "border-gray-200"}`}
+        >
           <nav className="-mb-px flex space-x-8">
             <button
               onClick={() => setActiveTab("overview")}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === "overview"
-                ? `${theme === 'dark' ? 'border-green-500 text-green-400' : 'border-green-500 text-green-600'}`
-                : `${theme === 'dark' ? 'border-transparent text-gray-400 hover:text-green-400 hover:border-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
-                }`}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                activeTab === "overview"
+                  ? `${theme === "dark" ? "border-green-500 text-green-400" : "border-green-500 text-green-600"}`
+                  : `${theme === "dark" ? "border-transparent text-gray-400 hover:text-green-400 hover:border-green-400" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`
+              }`}
             >
               Overview
             </button>
             <button
               onClick={() => setActiveTab("accounts")}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${activeTab === "accounts"
-                ? `${theme === 'dark' ? 'border-green-500 text-green-400' : 'border-green-500 text-green-600'}`
-                : `${theme === 'dark' ? 'border-transparent text-gray-400 hover:text-green-400 hover:border-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
-                }`}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                activeTab === "accounts"
+                  ? `${theme === "dark" ? "border-green-500 text-green-400" : "border-green-500 text-green-600"}`
+                  : `${theme === "dark" ? "border-transparent text-gray-400 hover:text-green-400 hover:border-green-400" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`
+              }`}
             >
               Accounts ({subAccounts.length})
             </button>
@@ -399,11 +415,13 @@ export const MccAccountPage = () => {
                 key={range.days}
                 type="button"
                 onClick={() => setTimeRange(range.days)}
-                className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${timeRange === range.days
-                  ? `${theme === 'dark' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-blue-100 text-blue-700 border-blue-300'}`
-                  : `${theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`
-                  } ${index === 0 ? "rounded-l-md" : ""} ${index === TIME_RANGES.length - 1 ? "rounded-r-md" : ""
-                  } border`}
+                className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
+                  timeRange === range.days
+                    ? `${theme === "dark" ? "bg-blue-100 text-blue-700 border-blue-300" : "bg-blue-100 text-blue-700 border-blue-300"}`
+                    : `${theme === "dark" ? "bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600" : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300"}`
+                } ${index === 0 ? "rounded-l-md" : ""} ${
+                  index === TIME_RANGES.length - 1 ? "rounded-r-md" : ""
+                } border`}
               >
                 {range.label}
               </button>
@@ -414,150 +432,189 @@ export const MccAccountPage = () => {
         {activeTab === "overview" ? (
           <div className="space-y-6">
             {/* Quality Score Trend */}
-            <div
-              className={`p-6 rounded-lg shadow mb-8 ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}
-            >
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-                <h3
-                  className={`text-lg font-semibold mb-4 sm:mb-0 ${theme === "dark" ? "text-white" : ""}`}
-                >
-                  Quality Score Trend
-                </h3>
-                <div className="flex items-center">
-                  <span className={`text-sm mr-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Current:</span>
-                  <span className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {latestScore.toFixed(1)}
-                  </span>
-                  {trend !== 0 && (
-                    <span
-                      className={`ml-2 text-sm ${trend > 0 ? "text-green-600" : "text-red-600"}`}
-                    >
-                      {trend > 0 ? "↑" : "↓"} {Math.abs(trend).toFixed(1)}%
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div style={{ height: "300px" }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    data={scores}
-                    margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
+            {scores.length > 0 && scores.some((score) => score.qs > 0) ? (
+              <div
+                className={`p-6 rounded-lg shadow mb-8 ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}
+              >
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                  <h3
+                    className={`text-lg font-semibold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
                   >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      vertical={false}
-                      stroke={theme === "dark" ? "#374151" : "#f0f0f0"}
-                    />
-                    <XAxis
-                      dataKey="axisDate"
-                      tick={{
-                        fontSize: 12,
-                        fill: theme === "dark" ? "#9ca3af" : "#4b5563",
-                      }}
-                      tickLine={false}
-                      axisLine={{
-                        stroke: theme === "dark" ? "#4b5563" : "#9ca3af",
-                        strokeWidth: 1,
-                      }}
-                      tickMargin={10}
-                    />
-                    <YAxis
-                      domain={[0, 10]}
-                      tickCount={6}
-                      tick={{
-                        fontSize: 12,
-                        fill: theme === "dark" ? "#9ca3af" : "#4b5563",
-                      }}
-                      tickLine={false}
-                      axisLine={{
-                        stroke: theme === "dark" ? "#4b5563" : "#9ca3af",
-                        strokeWidth: 1,
-                      }}
-                      width={30}
-                    />
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const qsValue = Number(payload[0].value);
-                          const displayQs = qsValue.toFixed(1);
-                          return (
-                            <div
-                              className={`space-y-1.5 p-2 rounded-lg border shadow-md ${theme === "dark"
-                                ? "bg-gray-800 border-gray-700"
-                                : "bg-white border-gray-200"
+                    Quality Score Trend
+                  </h3>
+                  <div className="flex items-center">
+                    <span
+                      className={`text-sm mr-2 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                    >
+                      Current:
+                    </span>
+                    <span
+                      className={`text-lg font-semibold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                    >
+                      {latestScore.toFixed(1)}
+                    </span>
+                    {trend !== 0 && (
+                      <span
+                        className={`ml-2 text-sm ${trend > 0 ? "text-green-600" : "text-red-600"}`}
+                      >
+                        {trend > 0 ? "↑" : "↓"} {Math.abs(trend).toFixed(1)}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ height: "300px" }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={scores}
+                      margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        vertical={false}
+                        stroke={theme === "dark" ? "#374151" : "#f0f0f0"}
+                      />
+                      <XAxis
+                        dataKey="axisDate"
+                        tick={{
+                          fontSize: 12,
+                          fill: theme === "dark" ? "#9ca3af" : "#4b5563",
+                        }}
+                        tickLine={false}
+                        axisLine={{
+                          stroke: theme === "dark" ? "#4b5563" : "#9ca3af",
+                          strokeWidth: 1,
+                        }}
+                        tickMargin={10}
+                      />
+                      <YAxis
+                        domain={[0, 10]}
+                        tickCount={6}
+                        tick={{
+                          fontSize: 12,
+                          fill: theme === "dark" ? "#9ca3af" : "#4b5563",
+                        }}
+                        tickLine={false}
+                        axisLine={{
+                          stroke: theme === "dark" ? "#4b5563" : "#9ca3af",
+                          strokeWidth: 1,
+                        }}
+                        width={30}
+                      />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const qsValue = Number(payload[0].value);
+                            const displayQs = qsValue.toFixed(1);
+                            return (
+                              <div
+                                className={`space-y-1.5 p-2 rounded-lg border shadow-md ${
+                                  theme === "dark"
+                                    ? "bg-gray-800 border-gray-700"
+                                    : "bg-white border-gray-200"
                                 }`}
-                            >
-                              <div>
-                                <span className="font-semibold text-sm">
-                                  {format(
-                                    new Date(payload[0].payload.date),
-                                    "MMM d, yyyy",
-                                  )}
-                                </span>
+                              >
+                                <div>
+                                  <span className="font-semibold text-sm">
+                                    {format(
+                                      new Date(payload[0].payload.date),
+                                      "MMM d, yyyy",
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between space-x-4">
+                                  <span
+                                    className={`text-xs ${
+                                      theme === "dark"
+                                        ? "text-gray-400"
+                                        : "text-gray-500"
+                                    }`}
+                                  >
+                                    Quality Score
+                                  </span>
+                                  <span
+                                    className={`font-medium text-sm ${
+                                      qsValue >= 8
+                                        ? "text-green-600"
+                                        : qsValue >= 5
+                                          ? "text-yellow-600"
+                                          : "text-red-600"
+                                    }`}
+                                  >
+                                    {displayQs}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between space-x-4">
+                                  <span
+                                    className={`text-xs ${
+                                      theme === "dark"
+                                        ? "text-gray-400"
+                                        : "text-gray-600"
+                                    }`}
+                                  >
+                                    Accounts:
+                                  </span>
+                                  <span
+                                    className={`font-medium text-sm ${
+                                      theme === "dark"
+                                        ? "text-white"
+                                        : "text-gray-900"
+                                    }`}
+                                  >
+                                    {payload[0].payload.accountCounts}
+                                  </span>
+                                </div>
                               </div>
-                              <div className="flex items-center justify-between space-x-4">
-                                <span
-                                  className={`text-xs ${theme === "dark"
-                                    ? "text-gray-400"
-                                    : "text-gray-500"
-                                    }`}
-                                >
-                                  Quality Score
-                                </span>
-                                <span
-                                  className={`font-medium text-sm ${qsValue >= 8
-                                    ? "text-green-600"
-                                    : qsValue >= 5
-                                      ? "text-yellow-600"
-                                      : "text-red-600"
-                                    }`}
-                                >
-                                  {displayQs}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between space-x-4">
-                                <span
-                                  className={`text-xs ${theme === "dark"
-                                    ? "text-gray-400"
-                                    : "text-gray-600"
-                                    }`}
-                                >
-                                  Accounts:
-                                </span>
-                                <span
-                                  className={`font-medium text-sm ${theme === "dark"
-                                    ? "text-white"
-                                    : "text-gray-900"
-                                    }`}
-                                >
-                                  {payload[0].payload.accountCounts}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <defs>
-                      <linearGradient id="colorQs" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0" stopColor="#3b82f6" stopOpacity={1} />
-                        <stop offset={off} stopColor="#3b82f6" stopOpacity={0.1} />
-                      </linearGradient>
-                    </defs>
-                    <Area
-                      type="monotone"
-                      dataKey="qs"
-                      stroke="#3b82f6"
-                      fillOpacity={1}
-                      fill="url(#colorQs)"
-                      strokeWidth={2}
-                      dot={(props) => {
-                        const { cx, cy, payload } = props;
-                        const qsValue = payload.qs;
-                        // Show dot only for non-zero values (make zero dots invisible)
-                        if (qsValue === 0) {
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <defs>
+                        <linearGradient
+                          id="colorQs"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0"
+                            stopColor="#3b82f6"
+                            stopOpacity={1}
+                          />
+                          <stop
+                            offset={off}
+                            stopColor="#3b82f6"
+                            stopOpacity={0.1}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <Area
+                        type="monotone"
+                        dataKey="qs"
+                        stroke="#3b82f6"
+                        fillOpacity={1}
+                        fill="url(#colorQs)"
+                        strokeWidth={2}
+                        dot={(props) => {
+                          const { cx, cy, payload } = props;
+                          const qsValue = payload.qs;
+                          // Show dot only for non-zero values (make zero dots invisible)
+                          if (qsValue === 0) {
+                            return (
+                              <circle
+                                key={`dot-${payload.date}-${qsValue}`}
+                                cx={cx}
+                                cy={cy}
+                                r={2}
+                                fill="#3b82f6"
+                                stroke={theme === "light" ? "#1e40af" : "#fff"}
+                                strokeWidth={1}
+                                opacity={0}
+                              />
+                            );
+                          }
                           return (
                             <circle
                               key={`dot-${payload.date}-${qsValue}`}
@@ -567,27 +624,27 @@ export const MccAccountPage = () => {
                               fill="#3b82f6"
                               stroke={theme === "light" ? "#1e40af" : "#fff"}
                               strokeWidth={1}
-                              opacity={0}
                             />
                           );
-                        }
-                        return (
-                          <circle
-                            key={`dot-${payload.date}-${qsValue}`}
-                            cx={cx}
-                            cy={cy}
-                            r={2}
-                            fill="#3b82f6"
-                            stroke={theme === "light" ? "#1e40af" : "#fff"}
-                            strokeWidth={1}
-                          />
-                        );
-                      }}
-                      activeDot={(props) => {
-                        const { cx, cy, payload } = props;
-                        const qsValue = payload.qs;
-                        // Show active dot only for non-zero values
-                        if (qsValue === 0) {
+                        }}
+                        activeDot={(props) => {
+                          const { cx, cy, payload } = props;
+                          const qsValue = payload.qs;
+                          // Show active dot only for non-zero values
+                          if (qsValue === 0) {
+                            return (
+                              <circle
+                                key={`active-dot-${payload.date}-${qsValue}`}
+                                cx={cx}
+                                cy={cy}
+                                r={6}
+                                fill="#3b82f6"
+                                stroke={theme === "light" ? "#1e40af" : "#fff"}
+                                strokeWidth={2}
+                                opacity={0}
+                              />
+                            );
+                          }
                           return (
                             <circle
                               key={`active-dot-${payload.date}-${qsValue}`}
@@ -597,29 +654,72 @@ export const MccAccountPage = () => {
                               fill="#3b82f6"
                               stroke={theme === "light" ? "#1e40af" : "#fff"}
                               strokeWidth={2}
-                              opacity={0}
                             />
                           );
-                        }
-                        return (
-                          <circle
-                            key={`active-dot-${payload.date}-${qsValue}`}
-                            cx={cx}
-                            cy={cy}
-                            r={6}
-                            fill="#3b82f6"
-                            stroke={theme === "light" ? "#1e40af" : "#fff"}
-                            strokeWidth={2}
-                          />
-                        );
-                      }}
-                    />
-                    <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" />
-                    <ReferenceLine y={4} stroke="#ef4444" strokeDasharray="3 3" />
-                  </AreaChart>
-                </ResponsiveContainer>
+                        }}
+                      />
+                      <ReferenceLine
+                        y={7}
+                        stroke="#10b981"
+                        strokeDasharray="3 3"
+                      />
+                      <ReferenceLine
+                        y={4}
+                        stroke="#ef4444"
+                        strokeDasharray="3 3"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div
+                className={`p-12 rounded-lg shadow mb-8 ${theme === "dark" ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"}`}
+              >
+                <div className="text-center">
+                  <div
+                    className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-6 ${theme === "dark" ? "bg-gray-700" : "bg-gray-100"}`}
+                  >
+                    <svg
+                      className={`w-8 h-8 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                      />
+                    </svg>
+                  </div>
+                  <h3
+                    className={`text-xl font-semibold mb-2 ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                  >
+                    There is no quality score data for this account.
+                  </h3>
+                  <p
+                    className={`text-lg mb-4 ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}
+                  >
+                    Quality score data has not been calculated for this account.
+                  </p>
+                  <div
+                    className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                  >
+                    <p>
+                      Quality scores will be displayed here when they are
+                      calculated.
+                    </p>
+                    <p className="mt-1">
+                      Last updated:{" "}
+                      {format(new Date(), "MMM d, yyyy 'saat' h:mm a")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Worst 5 Sub Accounts */}
             <div
@@ -630,13 +730,15 @@ export const MccAccountPage = () => {
                   <h3
                     className={`text-lg font-semibold ${theme === "dark" ? "text-white" : ""}`}
                   >
-                    {showBestAccounts ? "Best 5 Accounts" : "Worst 5 Accounts"} (by QS)
+                    {showBestAccounts ? "Best 5 Accounts" : "Worst 5 Accounts"}{" "}
+                    (by QS)
                   </h3>
                   <button
-                    className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-200 ${theme === "dark"
-                      ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
-                      : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                      }`}
+                    className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-200 ${
+                      theme === "dark"
+                        ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
+                        : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                    }`}
                     onClick={() => setShowBestAccounts(!showBestAccounts)}
                     title={`Switch to ${showBestAccounts ? "Worst" : "Best"} 5 Accounts`}
                   >
@@ -661,46 +763,61 @@ export const MccAccountPage = () => {
                 <div className="overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 tracking-wider">
-                      <thead className={theme === "dark" ? "bg-gray-700" : "bg-gray-50"}>
+                      <thead
+                        className={
+                          theme === "dark" ? "bg-gray-700" : "bg-gray-50"
+                        }
+                      >
                         <tr>
                           <th
                             scope="col"
-                            className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 whitespace-nowrap ${theme === "dark" ? "text-gray-300" : "text-gray-500"
-                              }`}
+                            className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 whitespace-nowrap ${
+                              theme === "dark"
+                                ? "text-gray-300"
+                                : "text-gray-500"
+                            }`}
                           >
                             Accounts
                           </th>
                           <th
                             scope="col"
-                            className={`px-6 py-3 text-xs font-medium uppercase tracking-wider w-2/3 text-center whitespace-nowrap ${theme === "dark" ? "text-gray-300" : "text-gray-500"
-                              }`}
+                            className={`px-6 py-3 text-xs font-medium uppercase tracking-wider w-2/3 text-center whitespace-nowrap ${
+                              theme === "dark"
+                                ? "text-gray-300"
+                                : "text-gray-500"
+                            }`}
                           >
                             Qs Trends
                           </th>
                           <th
                             scope="col"
-                            className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 whitespace-nowrap ${theme === "dark" ? "text-gray-300" : "text-gray-500"
-                              }`}
+                            className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6 whitespace-nowrap ${
+                              theme === "dark"
+                                ? "text-gray-300"
+                                : "text-gray-500"
+                            }`}
                           >
                             Avg QS
                           </th>
                         </tr>
                       </thead>
                       <tbody
-                        className={`divide-y ${theme === "dark"
-                          ? "divide-gray-700 bg-gray-800"
-                          : "divide-gray-200 bg-white"
-                          }`}
+                        className={`divide-y ${
+                          theme === "dark"
+                            ? "divide-gray-700 bg-gray-800"
+                            : "divide-gray-200 bg-white"
+                        }`}
                       >
                         {displayedAccounts.map((subAccount, index) => (
                           <tr
                             key={subAccount.id}
-                            className={`cursor-pointer transition-colors duration-200 h-16 align-top ${theme === "dark"
-                              ? "hover:bg-gray-700"
-                              : "hover:bg-gray-50"
-                              }`}
+                            className={`cursor-pointer transition-colors duration-200 h-16 align-top ${
+                              theme === "dark"
+                                ? "hover:bg-gray-700"
+                                : "hover:bg-gray-50"
+                            }`}
                             onClick={() =>
-                              navigate(`/mcc/${mccId}/sub/${subAccount.id}`)
+                              navigate(`/account/${subAccount.id}`)
                             }
                           >
                             <td
@@ -708,10 +825,11 @@ export const MccAccountPage = () => {
                             >
                               <div className="flex items-center gap-2">
                                 <span
-                                  className={`text-sm font-medium truncate inline-block max-w-[150px] ${theme === "dark"
-                                    ? "text-white"
-                                    : "text-gray-900"
-                                    }`}
+                                  className={`text-sm font-medium truncate inline-block max-w-[150px] ${
+                                    theme === "dark"
+                                      ? "text-white"
+                                      : "text-gray-900"
+                                  }`}
                                   title={subAccount.name}
                                 >
                                   {subAccount.name}
@@ -730,18 +848,17 @@ export const MccAccountPage = () => {
                                 </div>
                               </div>
                               <div
-                                className={`text-xs ${theme === "dark"
-                                  ? "text-gray-400"
-                                  : "text-gray-500"
-                                  }`}
+                                className={`text-xs ${
+                                  theme === "dark"
+                                    ? "text-gray-400"
+                                    : "text-gray-500"
+                                }`}
                               >
                                 ID: {subAccount.accountId}
                               </div>
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap w-2/3">
-                              <div
-                                className={`w-full`}
-                              >
+                              <div className={`w-full`}>
                                 <AccountSparkline
                                   width="100%"
                                   scores={subAccount.scores || []}
@@ -754,18 +871,19 @@ export const MccAccountPage = () => {
                             >
                               <div className="flex items-center">
                                 <span
-                                  className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${subAccount.avgQs >= 7
-                                    ? theme === "dark"
-                                      ? "bg-green-900 text-green-200"
-                                      : "bg-green-100 text-green-800"
-                                    : subAccount.avgQs >= 4
+                                  className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                    subAccount.avgQs >= 7
                                       ? theme === "dark"
-                                        ? "bg-yellow-900 text-yellow-200"
-                                        : "bg-yellow-100 text-yellow-800"
-                                      : theme === "dark"
-                                        ? "bg-red-900 text-red-200"
-                                        : "bg-red-100 text-red-800"
-                                    }`}
+                                        ? "bg-green-900 text-green-200"
+                                        : "bg-green-100 text-green-800"
+                                      : subAccount.avgQs >= 4
+                                        ? theme === "dark"
+                                          ? "bg-yellow-900 text-yellow-200"
+                                          : "bg-yellow-100 text-yellow-800"
+                                        : theme === "dark"
+                                          ? "bg-red-900 text-red-200"
+                                          : "bg-red-100 text-red-800"
+                                  }`}
                                 >
                                   {subAccount.avgQs.toFixed(1)}
                                 </span>
@@ -787,49 +905,104 @@ export const MccAccountPage = () => {
                 </div>
               ) : (
                 <div
-                  className={`text-center py-4 ${theme === "dark" ? "text-gray-400" : "text-gray-500"
-                    }`}
+                  className={`p-12 rounded-lg shadow mb-8 ${theme === "dark" ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-200"}`}
                 >
-                  No {showBestAccounts ? "best" : "worst"} accounts found
+                  <div className="text-center">
+                    <div
+                      className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-6 ${theme === "dark" ? "bg-gray-700" : "bg-gray-100"}`}
+                    >
+                      <svg
+                        className={`w-8 h-8 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                        />
+                      </svg>
+                    </div>
+                    <h3
+                      className={`text-xl font-semibold mb-2 ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                    >
+                      There is no quality score data for this account.
+                    </h3>
+                    <p
+                      className={`text-lg mb-4 ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}
+                    >
+                      Quality score data has not been calculated for this
+                      account.
+                    </p>
+                    <div
+                      className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                    >
+                      <p>
+                        Quality scores will be displayed here when they are
+                        calculated.
+                      </p>
+                      <p className="mt-1">
+                        Last updated:{" "}
+                        {format(new Date(), "MMM d, yyyy 'saat' h:mm a")}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
           </div>
         ) : (
-          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow overflow-hidden`}>
-
-
+          <div
+            className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} rounded-lg shadow overflow-hidden`}
+          >
             {isLoadingSubAccounts ? (
               <div className="p-6">
                 <div className="animate-pulse space-y-4">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className={`h-12 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} rounded`}></div>
+                    <div
+                      key={i}
+                      className={`h-12 ${theme === "dark" ? "bg-gray-700" : "bg-gray-100"} rounded`}
+                    ></div>
                   ))}
                 </div>
               </div>
             ) : subAccounts.length > 0 ? (
               <div>
                 {/* Search Input */}
-                <div className={`flex items-center justify-between ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} border-b`}>
+                <div
+                  className={`flex items-center justify-between ${theme === "dark" ? "border-gray-700" : "border-gray-200"} border-b`}
+                >
                   <div className={`p-4`}>
-                    <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Accounts</h2>
-                    <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <h2
+                      className={`text-lg font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                    >
+                      Accounts
+                    </h2>
+                    <p
+                      className={`mt-1 text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                    >
                       {subAccounts.length} accounts found
                     </p>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <div className={`relative w-full ${!accountsSearchTerm && "pr-4"}`}>
+                    <div
+                      className={`relative w-full ${!accountsSearchTerm && "pr-4"}`}
+                    >
                       <input
                         name="accountsSearchTerm"
                         type="text"
                         placeholder="Search accounts..."
                         value={accountsSearchTerm}
                         onChange={(e) => setAccountsSearchTerm(e.target.value)}
-                        className={`pl-10 pr-4 py-2 text-sm border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${theme === "dark"
-                          ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
-                          : "bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500"
-                          }`}
+                        className={`pl-10 pr-4 py-2 text-sm border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          theme === "dark"
+                            ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
+                            : "bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500"
+                        }`}
                       />
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <svg
@@ -850,14 +1023,25 @@ export const MccAccountPage = () => {
                     {accountsSearchTerm && (
                       <button
                         onClick={() => setAccountsSearchTerm("")}
-                        className={`mr-2 p-2 rounded-lg transition-colors duration-200 ${theme === "dark"
-                          ? "text-gray-400 hover:text-gray-300 hover:bg-gray-600"
-                          : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                          }`}
+                        className={`mr-2 p-2 rounded-lg transition-colors duration-200 ${
+                          theme === "dark"
+                            ? "text-gray-400 hover:text-gray-300 hover:bg-gray-600"
+                            : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                        }`}
                         title="Clear search"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
                         </svg>
                       </button>
                     )}
@@ -865,43 +1049,51 @@ export const MccAccountPage = () => {
                 </div>
 
                 <div className="overflow-x-auto">
-
                   {filteredSubAccounts.length > 0 ? (
-                    <table className={`min-w-full ${theme === 'dark' ? 'divide-gray-700' : 'divide-gray-200'}`}>
-                      <thead className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                    <table
+                      className={`min-w-full ${theme === "dark" ? "divide-gray-700" : "divide-gray-200"}`}
+                    >
+                      <thead
+                        className={`${theme === "dark" ? "bg-gray-700" : "bg-gray-50"}`}
+                      >
                         <tr>
                           <th
                             scope="col"
-                            className={`px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
+                            className={`px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider ${theme === "dark" ? "text-gray-300" : "text-gray-500"}`}
                           >
                             Accounts
                           </th>
                           <th
                             scope="col"
-                            className={`px-6 py-3 w-2/3 text-center text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
+                            className={`px-6 py-3 w-2/3 text-center text-xs font-medium uppercase tracking-wider ${theme === "dark" ? "text-gray-300" : "text-gray-500"}`}
                           >
                             QS Trends
                           </th>
                           <th
                             scope="col"
-                            className={`px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}
+                            className={`px-6 py-3 w-1/6 text-left text-xs font-medium uppercase tracking-wider ${theme === "dark" ? "text-gray-300" : "text-gray-500"}`}
                           >
                             Avg QS
                           </th>
                         </tr>
                       </thead>
-                      <tbody className={`${theme === 'dark' ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'}`}>
+                      <tbody
+                        className={`${theme === "dark" ? "bg-gray-800 divide-gray-700" : "bg-white divide-gray-200"}`}
+                      >
                         {filteredSubAccounts.map((subAccount) => (
                           <tr
                             key={subAccount.id}
-                            className={`cursor-pointer transition-colors duration-200 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}
+                            className={`cursor-pointer transition-colors duration-200 ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-50"}`}
                             onClick={() =>
-                              navigate(`/mcc/${mccId}/sub/${subAccount.id}`)
+                              navigate(`/account/${subAccount.id}`)
                             }
                           >
                             <td className="px-6 py-4 w-1/6">
                               <div className="flex items-center gap-2">
-                                <span className={`text-sm font-medium truncate inline-block max-w-[150px] ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} title={subAccount.name}>
+                                <span
+                                  className={`text-sm font-medium truncate inline-block max-w-[150px] ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                                  title={subAccount.name}
+                                >
                                   {subAccount.name}
                                 </span>
                                 <div className="relative group">
@@ -911,13 +1103,15 @@ export const MccAccountPage = () => {
                                     title={subAccount.status}
                                   ></span>
                                   <div
-                                    className={`cursor-pointer absolute z-10 hidden group-hover:block rounded px-3 py-2 -mt-8 -ml-2 ${theme === 'dark' ? 'bg-gray-900 text-gray-200' : 'bg-gray-200 text-gray-800'} ${getStatusStyle(subAccount.status).tx} text-xs`}
+                                    className={`cursor-pointer absolute z-10 hidden group-hover:block rounded px-3 py-2 -mt-8 -ml-2 ${theme === "dark" ? "bg-gray-900 text-gray-200" : "bg-gray-200 text-gray-800"} ${getStatusStyle(subAccount.status).tx} text-xs`}
                                   >
                                     {subAccount.status}
                                   </div>
                                 </div>
                               </div>
-                              <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                              <div
+                                className={`text-xs mt-1 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                              >
                                 ID: {subAccount.accountId}
                               </div>
                             </td>
@@ -934,21 +1128,23 @@ export const MccAccountPage = () => {
                             <td className="px-6 py-4 w-1/6 whitespace-nowrap">
                               <div className="flex items-center">
                                 <span
-                                  className={`px-3 py-1 rounded-full text-sm font-medium ${subAccount.avgQs >= 7
-                                    ? `${theme === 'dark' ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-800'}`
-                                    : subAccount.avgQs >= 4
-                                      ? `${theme === 'dark' ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-800'}`
-                                      : `${theme === 'dark' ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-800'}`
-                                    }`}
+                                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                    subAccount.avgQs >= 7
+                                      ? `${theme === "dark" ? "bg-green-900/30 text-green-400" : "bg-green-100 text-green-800"}`
+                                      : subAccount.avgQs >= 4
+                                        ? `${theme === "dark" ? "bg-yellow-900/30 text-yellow-400" : "bg-yellow-100 text-yellow-800"}`
+                                        : `${theme === "dark" ? "bg-red-900/30 text-red-400" : "bg-red-100 text-red-800"}`
+                                  }`}
                                 >
                                   {subAccount.avgQs.toFixed(1)}/10
                                 </span>
                                 {subAccount.qsChange !== 0 && (
                                   <span
-                                    className={`ml-3 inline-flex items-center text-sm font-medium ${subAccount.qsChange > 0
-                                      ? "text-green-600"
-                                      : "text-red-600"
-                                      }`}
+                                    className={`ml-3 inline-flex items-center text-sm font-medium ${
+                                      subAccount.qsChange > 0
+                                        ? "text-green-600"
+                                        : "text-red-600"
+                                    }`}
                                   >
                                     {subAccount.qsChange > 0 ? "↑" : "↓"}{" "}
                                     {Math.abs(subAccount.qsChange).toFixed(1)}%
@@ -961,14 +1157,20 @@ export const MccAccountPage = () => {
                       </tbody>
                     </table>
                   ) : (
-                    <div className={`p-6 text-center italic ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {accountsSearchTerm ? `No accounts found matching "${accountsSearchTerm}"` : "No accounts found"}
+                    <div
+                      className={`p-6 text-center italic ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                    >
+                      {accountsSearchTerm
+                        ? `No accounts found matching "${accountsSearchTerm}"`
+                        : "No accounts found"}
                     </div>
                   )}
                 </div>
               </div>
             ) : (
-              <div className={`p-6 text-center italic ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+              <div
+                className={`p-6 text-center italic ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+              >
                 No accounts found
               </div>
             )}

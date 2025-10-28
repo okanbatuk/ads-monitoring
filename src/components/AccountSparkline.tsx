@@ -118,10 +118,10 @@ export const AccountSparkline: React.FC<AccountSparklineProps> = ({
   if (!scores || scores.length === 0) {
     return (
       <div
-        className="flex items-center justify-center text-gray-400 text-sm italic"
+        className="flex items-center justify-center text-gray-400 text-xs italic"
         style={{ width, height }}
       >
-        This Account has no Campaigns!
+        No data available
       </div>
     );
   }
